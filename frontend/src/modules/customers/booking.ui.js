@@ -4,60 +4,26 @@ import { BillingAPI } from '../../api/billing.api.js';
 import { ToastUI } from '../../shared/utils/toast.js';
 import { populateAddressDropdown } from '../../shared/utils/addressList.js';
 
+import { calculateAutoLaborCostLogic, applyBearerCost } from '../../shared/utils/extraCost.js';
+import { populateProductSelect } from '../../shared/utils/productDropdown.js';
+
 let bookingProducts = [];
 let bookingCart = [];
 let laborSettings = [];
 
-// 🎯 billing.ui.js-এর calculateAutoLaborCostLogic থেকে হুবহু কপি — সামঞ্জস্য বজায় রাখতে
-function calculateAutoLaborCostLogic(cart, settings) {
-    const rateMap = {};
-    settings.forEach(s => {
-        rateMap[s.category_key.trim().toLowerCase()] = parseFloat(s.rate_per_unit) || 0;
-    });
-
-    let totalLaborCost = 0;
-    cart.forEach(item => {
-        const qty = parseFloat(item.quantity) || 0;
-        const rawUnit = (item.unit || '').trim().toLowerCase();
-        let targetKey = 'others';
-
-        if (rawUnit.includes('ব্যাগ') || rawUnit.includes('bag') || rawUnit.includes('bosta')) targetKey = 'bag';
-        else if (rawUnit.includes('কেজি') || rawUnit.includes('kg')) targetKey = 'kg';
-        else if (rawUnit.includes('বান্ডিল') || rawUnit.includes('bundle')) targetKey = 'bundle';
-        else if (rawUnit.includes('পিস') || rawUnit.includes('pcs')) targetKey = 'pcs';
-
-        if (rateMap[targetKey] !== undefined) totalLaborCost += qty * rateMap[targetKey];
-        else totalLaborCost += qty * (rateMap['others'] || 0);
-    });
-    return totalLaborCost;
-}
-
 async function populateBookingProductDropdown() {
     const select = document.getElementById('booking-product-select');
-    const priceInput = document.getElementById('booking-locked-price'); // 🎯 নতুন
-    const qtyInput = document.getElementById('booking-qty'); // 🎯 নতুন
+    const priceInput = document.getElementById('booking-locked-price');
+    const qtyInput = document.getElementById('booking-qty');
     if (!select) return;
 
     try {
         bookingProducts = await InventoryAPI.getProducts();
-        select.innerHTML = '';
 
-        // 🎯 নতুন লজিক: ডিফল্ট "প্রোডাক্ট নির্বাচন করুন" অপশন যোগ করা হলো
-        const defaultOpt = document.createElement('option');
-        defaultOpt.value = '';
-        defaultOpt.innerText = 'প্রোডাক্ট নির্বাচন করুন';
-        defaultOpt.selected = true;
-        defaultOpt.disabled = true; // যাতে সিলেক্ট থাকা অবস্থায় বুকিং কার্টে যোগ করা না যায়
-        select.appendChild(defaultOpt);
+        populateProductSelect(select, bookingProducts, prod =>
+            `${prod.name} (বর্তমান স্টক: ${prod.current_stock} ${prod.unit || ''})`
+        );
 
-        bookingProducts.forEach(prod => {
-            const opt = document.createElement('option');
-            opt.value = prod.id;
-            opt.innerText = `${prod.name} (বর্তমান স্টক: ${prod.current_stock} ${prod.unit || ''})`;
-            select.appendChild(opt);
-        });
-
-        // 🎯 পেজ লোড হওয়ার পর রেট ও পরিমাণ ফিল্ড রিসেট করা
         if (priceInput) priceInput.value = '';
         if (qtyInput) qtyInput.value = '1';
 
@@ -171,13 +137,11 @@ function updateTotals() {
     const productTotal = bookingCart.reduce((sum, item) => sum + item.totalPrice, 0);
 
     const laborCost = parseFloat(document.getElementById('booking-labor-advance')?.value) || 0;
-    const laborBearer = document.getElementById('booking-labor-bearer')?.value || 'customer'; // 🎯 'none' এর বদলে 'customer'
+    const laborBearer = document.getElementById('booking-labor-bearer')?.value || 'customer';
     const transportCost = parseFloat(document.getElementById('booking-transport-cost')?.value) || 0;
-    const transportBearer = document.getElementById('booking-transport-bearer')?.value || 'customer'; // 🎯 'none' এর বদলে 'customer'
+    const transportBearer = document.getElementById('booking-transport-bearer')?.value || 'customer';
 
-    let totalBookingValue = productTotal;
-    if (laborBearer === 'customer') totalBookingValue += laborCost;
-    if (transportBearer === 'customer') totalBookingValue += transportCost;
+    const totalBookingValue = applyBearerCost(productTotal, laborCost, laborBearer, transportCost, transportBearer);
 
     const totalEl = document.getElementById('booking-total-value');
     if (totalEl) totalEl.innerText = totalBookingValue.toFixed(2);

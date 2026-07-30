@@ -3,12 +3,13 @@ import { BillingAPI } from '../../api/billing.api.js';
 import { CustomerAPI } from '../../api/customer.api.js';
 import { ToastUI } from '../../shared/utils/toast.js';
 import { populateAddressDropdown } from '../../shared/utils/addressList.js';
+import { loadLaborSettings, calculateAutoLaborCost, applyBearerCost } from '../../shared/utils/extraCost.js';
+import { populateProductSelect } from '../../shared/utils/productDropdown.js';
 
 // 🎯 কার্ট এখন frontend-এ থাকে (প্রতিটা ব্রাউজার ট্যাবের নিজস্ব state) — backend-এ গ্লোবাল ভ্যারিয়েবলে রাখলে
 // সব ইউজারের কার্ট মিশে যেত। এটাই সঠিক জায়গা।
 let cart = [];
 let globalProducts = [];
-let laborSettings = [];
 let currentDiscountAmount = 0;
 let customerOpenBookings = [];
 
@@ -16,36 +17,29 @@ let customerOpenBookings = [];
 
 function calculateSummary(cart, laborCost, laborBearer, transportCost, transportBearer, cashPaid) {
     const subtotal = cart.reduce((sum, item) => sum + item.total_price, 0);
-    let totalPayable = subtotal;
-
-    if (laborBearer === 'customer') totalPayable += laborCost;
-    if (transportBearer === 'customer') totalPayable += transportCost;
+    const totalPayable = applyBearerCost(subtotal, laborCost, laborBearer, transportCost, transportBearer);
 
     const due = totalPayable - cashPaid;
     return { subtotal, totalPayable, due };
 }
 
-function calculateAutoLaborCostLogic(cart, settings) {
-    const rateMap = {};
-    settings.forEach(s => {
-        rateMap[s.category_key.trim().toLowerCase()] = parseFloat(s.rate_per_unit) || 0;
-    });
+// ---------- বিল সামারি ফর্মের DOM elements একসাথে নেওয়ার হেল্পার (repeat কমাতে) ----------
+// calculateBillSummary(), handleCheckout(), initBillingModule() — তিনটা জায়গাতেই এই একই
+// element গুলো আলাদা করে querySelect করা হতো, এখন একবারে এখান থেকে নেওয়া হয়।
 
-    let totalLaborCost = 0;
-    cart.forEach(item => {
-        const qty = parseFloat(item.quantity) || 0;
-        const rawUnit = (item.unit || '').trim().toLowerCase();
-        let targetKey = 'others';
-
-        if (rawUnit.includes('ব্যাগ') || rawUnit.includes('bag') || rawUnit.includes('bosta')) targetKey = 'bag';
-        else if (rawUnit.includes('কেজি') || rawUnit.includes('kg')) targetKey = 'kg';
-        else if (rawUnit.includes('বান্ডিল') || rawUnit.includes('bundle')) targetKey = 'bundle';
-        else if (rawUnit.includes('পিস') || rawUnit.includes('pcs')) targetKey = 'pcs';
-
-        if (rateMap[targetKey] !== undefined) totalLaborCost += qty * rateMap[targetKey];
-        else totalLaborCost += qty * (rateMap['others'] || 0);
-    });
-    return totalLaborCost;
+function getSummaryFormElements() {
+    return {
+        summarySubtotal: document.getElementById('summary-subtotal'),
+        summaryTotalPayable: document.getElementById('summary-total-payable'),
+        summaryCashPaid: document.getElementById('summary-cash-paid'),
+        summaryCalculatedDue: document.getElementById('summary-calculated-due'),
+        prevDueElement: document.getElementById('summary-previous-due'),
+        summaryLaborCost: document.getElementById('summary-labor-cost'),
+        summaryLaborBearer: document.getElementById('summary-labor-bearer'),
+        summaryTransportCost: document.getElementById('summary-transport-cost'),
+        summaryTransportBearer: document.getElementById('summary-transport-bearer'),
+        roundOffCheckbox: document.getElementById('chk-round-off'),
+    };
 }
 
 // ---------- ড্রপডাউন / প্রোডাক্ট লোড ----------
@@ -53,34 +47,20 @@ function calculateAutoLaborCostLogic(cart, settings) {
 export async function populateBillingDropdown() {
     try {
         const billProdSelect = document.getElementById('bill-prod-select');
-        const billProdRate = document.getElementById('bill-prod-rate'); // 🎯 নতুন
-        const billProdQty = document.getElementById('bill-prod-qty'); // 🎯 নতুন
+        const billProdRate = document.getElementById('bill-prod-rate');
+        const billProdQty = document.getElementById('bill-prod-qty');
         if (!billProdSelect) return;
 
         globalProducts = await InventoryAPI.getProducts();
 
-        billProdSelect.innerHTML = '';
+        populateProductSelect(billProdSelect, globalProducts, prod =>
+            `${prod.name} (স্টক: ${prod.current_stock} ${prod.unit || ''})`
+        );
 
-        // 🎯 নতুন লজিক: ডিফল্ট "প্রোডাক্ট নির্বাচন করুন" অপশন যোগ করা হলো
-        const defaultOpt = document.createElement('option');
-        defaultOpt.value = '';
-        defaultOpt.innerText = 'প্রোডাক্ট নির্বাচন করুন';
-        defaultOpt.selected = true;
-        defaultOpt.disabled = true; // যাতে এটা সিলেক্ট থাকা অবস্থায় কেউ কার্টে যোগ করতে না পারে
-        billProdSelect.appendChild(defaultOpt);
-
-        globalProducts.forEach(prod => {
-            const opt = document.createElement('option');
-            opt.value = prod.id;
-            opt.innerText = `${prod.name} (স্টক: ${prod.current_stock} ${prod.unit || ''})`;
-            billProdSelect.appendChild(opt);
-        });
-
-        // 🎯 পেজ লোড হওয়ার পর রেট ও পরিমাণ ফিল্ড রিসেট করা
         if (billProdRate) billProdRate.value = '';
         if (billProdQty) billProdQty.value = '1';
 
-        laborSettings = await BillingAPI.getLaborSettings();
+        await loadLaborSettings();
     } catch (err) {
         console.error("Dropdown loading failed:", err.message);
     }
@@ -136,16 +116,11 @@ function updateRateField(productId) {
 // ---------- বিল সামারি ----------
 
 function calculateBillSummary() {
-    const summarySubtotal = document.getElementById('summary-subtotal');
-    const summaryTotalPayable = document.getElementById('summary-total-payable');
-    const summaryCashPaid = document.getElementById('summary-cash-paid');
-    const summaryCalculatedDue = document.getElementById('summary-calculated-due');
-    const prevDueElement = document.getElementById('summary-previous-due');
-
-    const summaryLaborCost = document.getElementById('summary-labor-cost');
-    const summaryLaborBearer = document.getElementById('summary-labor-bearer');
-    const summaryTransportCost = document.getElementById('summary-transport-cost');
-    const summaryTransportBearer = document.getElementById('summary-transport-bearer');
+    const {
+        summarySubtotal, summaryTotalPayable, summaryCashPaid, summaryCalculatedDue,
+        prevDueElement, summaryLaborCost, summaryLaborBearer, summaryTransportCost,
+        summaryTransportBearer, roundOffCheckbox
+    } = getSummaryFormElements();
 
     if (!summarySubtotal) return;
 
@@ -161,7 +136,6 @@ function calculateBillSummary() {
     totalPayable += previousDue;
     due = totalPayable - cashPaid;
 
-    const roundOffCheckbox = document.getElementById('chk-round-off');
     currentDiscountAmount = 0;
 
     if (roundOffCheckbox && roundOffCheckbox.checked && due > 0) {
@@ -172,21 +146,6 @@ function calculateBillSummary() {
     summarySubtotal.innerText = subtotal.toFixed(2);
     if (summaryTotalPayable) summaryTotalPayable.innerText = totalPayable.toFixed(2);
     if (summaryCalculatedDue) summaryCalculatedDue.innerText = due.toFixed(2);
-}
-
-function calculateAutoLaborCost() {
-    const summaryLaborCost = document.getElementById('summary-labor-cost');
-    if (!summaryLaborCost) return;
-
-    if (cart.length === 0) {
-        summaryLaborCost.value = 0;
-        calculateBillSummary();
-        return;
-    }
-
-    const totalLaborCost = calculateAutoLaborCostLogic(cart, laborSettings);
-    summaryLaborCost.value = totalLaborCost.toFixed(2);
-    calculateBillSummary();
 }
 
 // ---------- কার্ট ----------
@@ -218,8 +177,10 @@ function renderCart() {
         });
     });
 
+    // 🎯 আগে এখানে calculateBillSummary() দুইবার কল হতো (একবার এখানে, একবার calculateAutoLaborCost()-এর ভেতরে) —
+    // এখন calculateAutoLaborCost(cart) শুধু labor cost ফিল্ড আপডেট করে, calculateBillSummary() একবারই পরে কল হয়।
+    calculateAutoLaborCost(cart);
     calculateBillSummary();
-    calculateAutoLaborCost();
 }
 
 function addOrMergeCartLine(item, qty, rate, bookingId) {
@@ -289,8 +250,8 @@ function handleAddToCart() {
 
     renderCart();
     if (billProdQty) billProdQty.value = '1';
-    
-    // 🎯 কার্টে মাল অ্যাড করার পর সিলেক্ট বক্স আগের মতো ফাঁকা করে দেওয়া (অপশনাল কিন্তু ইউজার ফ্রেন্ডলি)
+
+    // 🎯 কার্টে মাল অ্যাড করার পর সিলেক্ট বক্স আগের মতো ফাঁকা করে দেওয়া (অপশনাল কিন্তু ইউজার ফ্রেন্ডলি)
     if (billProdSelect) billProdSelect.value = '';
     if (billProdRate) billProdRate.value = '';
 }
@@ -308,14 +269,10 @@ async function handleCheckout(checkoutBillBtn) {
     const fatherName = document.getElementById('customer-father')?.value.trim() || "";
     const customerAddress = document.getElementById('customer-address')?.value.trim() || "";
 
-    const summaryLaborCost = document.getElementById('summary-labor-cost');
-    const summaryLaborBearer = document.getElementById('summary-labor-bearer');
-    const summaryTransportCost = document.getElementById('summary-transport-cost');
-    const summaryTransportBearer = document.getElementById('summary-transport-bearer');
-    const summarySubtotal = document.getElementById('summary-subtotal');
-    const summaryTotalPayable = document.getElementById('summary-total-payable');
-    const summaryCashPaid = document.getElementById('summary-cash-paid');
-    const prevDueElement = document.getElementById('summary-previous-due');
+    const {
+        summaryLaborCost, summaryLaborBearer, summaryTransportCost, summaryTransportBearer,
+        summarySubtotal, summaryTotalPayable, summaryCashPaid, prevDueElement, roundOffCheckbox
+    } = getSummaryFormElements();
 
     const laborCost = parseFloat(summaryLaborCost ? summaryLaborCost.value : 0) || 0;
     const laborBearer = summaryLaborBearer ? summaryLaborBearer.value : 'customer'; // 🎯 এখানে পরিবর্তন
@@ -354,7 +311,7 @@ async function handleCheckout(checkoutBillBtn) {
 
         currentDiscountAmount = 0;
         cart = [];
-        customerOpenBookings = []; 
+        customerOpenBookings = [];
         renderCart();
 
         if (document.getElementById('bill-cust-name')) document.getElementById('bill-cust-name').value = '';
@@ -362,12 +319,11 @@ async function handleCheckout(checkoutBillBtn) {
         if (document.getElementById('customer-father')) document.getElementById('customer-father').value = '';
         if (document.getElementById('customer-address')) document.getElementById('customer-address').value = '';
         if (summaryLaborCost) summaryLaborCost.value = 0;
-        if (summaryLaborBearer) summaryLaborBearer.value = 'customer'; // 🎯 রিসেট করার সময় পরিবর্তন
+        if (summaryLaborBearer) summaryLaborBearer.value = 'customer'; // 🎯 রিসেট করার সময় পরিবর্তন
         if (summaryTransportCost) summaryTransportCost.value = 0;
-        if (summaryTransportBearer) summaryTransportBearer.value = 'customer'; // 🎯 রিসেট করার সময় পরিবর্তন
+        if (summaryTransportBearer) summaryTransportBearer.value = 'customer'; // 🎯 রিসেট করার সময় পরিবর্তন
         if (summaryCashPaid) summaryCashPaid.value = 0;
 
-        const roundOffCheckbox = document.getElementById('chk-round-off');
         if (roundOffCheckbox) roundOffCheckbox.checked = false;
 
         if (prevDueElement) prevDueElement.innerText = '0.00';
@@ -555,12 +511,10 @@ export function initBillingModule() {
     const addToCartBtn = document.getElementById('add-to-cart-btn');
     const checkoutBillBtn = document.getElementById('checkout-bill-btn');
 
-    const summaryLaborCost = document.getElementById('summary-labor-cost');
-    const summaryLaborBearer = document.getElementById('summary-labor-bearer');
-    const summaryTransportCost = document.getElementById('summary-transport-cost');
-    const summaryTransportBearer = document.getElementById('summary-transport-bearer');
-    const summaryCashPaid = document.getElementById('summary-cash-paid');
-    const roundOffCheckbox = document.getElementById('chk-round-off');
+    const {
+        summaryLaborCost, summaryLaborBearer, summaryTransportCost,
+        summaryTransportBearer, summaryCashPaid, roundOffCheckbox
+    } = getSummaryFormElements();
 
     cart = [];
     populateBillingDropdown();
