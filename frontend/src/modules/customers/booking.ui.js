@@ -11,6 +11,25 @@ let bookingProducts = [];
 let bookingCart = [];
 let laborSettings = [];
 
+// ---------- extra-cost ফর্মের DOM elements একসাথে নেওয়ার হেল্পার (repeat কমাতে) ----------
+// updateTotals(), resetBookingForm(), initBookingModule(), initQuickBookingModal(),
+// calculateAutoLaborAdvance() — সবগুলো জায়গাতেই এই একই element গুলো আলাদা করে
+// querySelect করা হতো, এখন একবারে এখান থেকে নেওয়া হয়। event listener attach করার
+// পদ্ধতি (addEventListener বনাম .onclick=) অপরিবর্তিত রাখা হয়েছে — শুধু element lookup
+// একজায়গায় আনা হয়েছে।
+
+function getBookingCostFormElements() {
+    return {
+        laborInput: document.getElementById('booking-labor-advance'),
+        laborBearerSelect: document.getElementById('booking-labor-bearer'),
+        transportInput: document.getElementById('booking-transport-cost'),
+        transportBearerSelect: document.getElementById('booking-transport-bearer'),
+        advanceInput: document.getElementById('booking-advance-paid'),
+        totalEl: document.getElementById('booking-total-value'),
+        grandTotalEl: document.getElementById('booking-grand-total-advance'),
+    };
+}
+
 async function populateBookingProductDropdown() {
     const select = document.getElementById('booking-product-select');
     const priceInput = document.getElementById('booking-locked-price');
@@ -83,7 +102,7 @@ function renderBookingCart() {
 }
 
 function calculateAutoLaborAdvance() {
-    const laborInput = document.getElementById('booking-labor-advance');
+    const { laborInput } = getBookingCostFormElements();
     if (!laborInput) return;
 
     if (bookingCart.length === 0) {
@@ -126,7 +145,7 @@ function handleAddToBookingCart() {
     renderBookingCart();
     if (qtyInput) qtyInput.value = '1';
 
-    // 🎯 কার্টে অ্যাড করার পর ড্রপডাউন ও রেট রিসেট করে দেওয়া
+    // 🎯 কার্টে অ্যাড করার পর ড্রপডাউন ও রেট রিসেট করে দেওয়া
     if (productSelect) productSelect.value = '';
     if (priceInput) priceInput.value = '';
 }
@@ -136,18 +155,21 @@ function handleAddToBookingCart() {
 function updateTotals() {
     const productTotal = bookingCart.reduce((sum, item) => sum + item.totalPrice, 0);
 
-    const laborCost = parseFloat(document.getElementById('booking-labor-advance')?.value) || 0;
-    const laborBearer = document.getElementById('booking-labor-bearer')?.value || 'customer';
-    const transportCost = parseFloat(document.getElementById('booking-transport-cost')?.value) || 0;
-    const transportBearer = document.getElementById('booking-transport-bearer')?.value || 'customer';
+    const {
+        laborInput, laborBearerSelect, transportInput, transportBearerSelect,
+        advanceInput, totalEl, grandTotalEl
+    } = getBookingCostFormElements();
+
+    const laborCost = parseFloat(laborInput?.value) || 0;
+    const laborBearer = laborBearerSelect?.value || 'customer';
+    const transportCost = parseFloat(transportInput?.value) || 0;
+    const transportBearer = transportBearerSelect?.value || 'customer';
 
     const totalBookingValue = applyBearerCost(productTotal, laborCost, laborBearer, transportCost, transportBearer);
 
-    const totalEl = document.getElementById('booking-total-value');
     if (totalEl) totalEl.innerText = totalBookingValue.toFixed(2);
 
-    const advancePaid = parseFloat(document.getElementById('booking-advance-paid')?.value) || 0;
-    const grandTotalEl = document.getElementById('booking-grand-total-advance');
+    const advancePaid = parseFloat(advanceInput?.value) || 0;
     if (grandTotalEl) grandTotalEl.innerText = advancePaid.toFixed(2);
 }
 
@@ -163,15 +185,11 @@ function resetBookingForm() {
     const productSelect = document.getElementById('booking-product-select');
     if (productSelect) productSelect.value = ''; 
 
-    const advanceInput = document.getElementById('booking-advance-paid');
+    const { laborInput, laborBearerSelect, transportInput, transportBearerSelect, advanceInput } = getBookingCostFormElements();
     if (advanceInput) advanceInput.value = '0';
-    const laborInput = document.getElementById('booking-labor-advance');
     if (laborInput) laborInput.value = '0';
-    const laborBearerSelect = document.getElementById('booking-labor-bearer');
     if (laborBearerSelect) laborBearerSelect.value = 'customer'; // 🎯 'none' এর বদলে 'customer'
-    const transportInput = document.getElementById('booking-transport-cost');
     if (transportInput) transportInput.value = '0';
-    const transportBearerSelect = document.getElementById('booking-transport-bearer');
     if (transportBearerSelect) transportBearerSelect.value = 'customer'; // 🎯 'none' এর বদলে 'customer'
 
     updateTotals();
@@ -245,19 +263,12 @@ export function initBookingModule() {
         });
     }
 
-    const advanceInput = document.getElementById('booking-advance-paid');
+    const { laborInput, laborBearerSelect, transportInput, transportBearerSelect, advanceInput } = getBookingCostFormElements();
+
     if (advanceInput) advanceInput.addEventListener('input', updateTotals);
-
-    const laborInput = document.getElementById('booking-labor-advance');
     if (laborInput) laborInput.addEventListener('input', updateTotals);
-
-    const laborBearerSelect = document.getElementById('booking-labor-bearer');
     if (laborBearerSelect) laborBearerSelect.addEventListener('change', updateTotals);
-
-    const transportInput = document.getElementById('booking-transport-cost');
     if (transportInput) transportInput.addEventListener('input', updateTotals);
-
-    const transportBearerSelect = document.getElementById('booking-transport-bearer');
     if (transportBearerSelect) transportBearerSelect.addEventListener('change', updateTotals);
 
     const submitBtn = document.getElementById('booking-submit-btn');
@@ -334,19 +345,12 @@ export function initQuickBookingModal(existingCustomerId, customerName, onSucces
         };
     }
 
-    const advanceInput = document.getElementById('booking-advance-paid');
+    const { laborInput, laborBearerSelect, transportInput, transportBearerSelect, advanceInput } = getBookingCostFormElements();
+
     if (advanceInput) advanceInput.oninput = updateTotals;
-
-    const laborInput = document.getElementById('booking-labor-advance');
     if (laborInput) laborInput.oninput = updateTotals;
-
-    const laborBearerSelect = document.getElementById('booking-labor-bearer');
     if (laborBearerSelect) laborBearerSelect.onchange = updateTotals;
-
-    const transportInput = document.getElementById('booking-transport-cost');
     if (transportInput) transportInput.oninput = updateTotals;
-
-    const transportBearerSelect = document.getElementById('booking-transport-bearer');
     if (transportBearerSelect) transportBearerSelect.onchange = updateTotals;
 
     const submitBtn = document.getElementById('booking-submit-btn');
