@@ -1,0 +1,88 @@
+<div id="inventory-screen" class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h2 class="text-xl font-bold mb-4 text-blue-600 border-b pb-2">📦 নতুন প্রোডাক্ট যোগ করুন</h2>
+        <form id="product-form" class="space-y-4">
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="product-select">
+                    প্রোডাক্ট সিলেক্ট করুন (পুরাতন মালের স্টক বাড়াতে চাইলে):
+                </label>
+                <select id="product-select" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                    <option value="">-- নতুন প্রোডাক্ট (নতুন নাম লিখুন) --</option>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">প্রোডাক্টের নাম:</label>
+                    <input type="text" id="prod-name" placeholder="যেমন: BSRM Rod 10mm" class="mt-1 block w-full rounded-md p-2 bg-gray-50 border focus:outline-blue-500" required>
+                </div>
+                <div id="product-group-field-wrapper">
+                    <label class="block text-sm font-medium text-gray-700" title="একই দামের বিকল্প প্রোডাক্টগুলোকে (যেমন 10mm/12mm/16mm BSRM রড) একই গ্রুপ-নাম দিন">🏷️ প্রোডাক্ট গ্রুপ:</label>
+                    <input type="text" id="prod-group" list="product-group-suggestions" placeholder="যেমন: BSRM Rod"
+                        class="mt-1 block w-full rounded-md p-2 bg-gray-50 border focus:outline-blue-500">
+                    <datalist id="product-group-suggestions"></datalist>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">ইউনিট:</label>
+                    <select id="prod-unit" class="mt-1 block w-full rounded-md p-2 bg-gray-50 border focus:outline-blue-500">
+                        <option value="কেজি">কেজি (Kg)</option>
+                        <option value="ব্যাগ">ব্যাগ (Bag)</option>
+                        <option value="বান্ডিল">বান্ডিল (Bundle)</option>
+                        <option value="পিস">পিস (piece)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">বর্তমান স্টক (পরিমাণ):</label>
+                    <input type="number" id="prod-stock" step="0.01" value="0" class="mt-1 block w-full rounded-md p-2 bg-gray-50 border focus:outline-blue-500">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">কেনা দাম:</label>
+                    <input type="number" id="prod-buying" step="0.01" placeholder="0.00" class="mt-1 block w-full rounded-md p-2 bg-gray-50 border focus:outline-blue-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">বিক্রয় দাম:</label>
+                    <input type="number" id="prod-selling" step="0.01" placeholder="0.00" class="mt-1 block w-full rounded-md p-2 bg-gray-50 border focus:outline-blue-500" required>
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-dashed border-gray-200">
+                <label class="block text-sm font-bold text-blue-600 mb-1">🚛 আনলোডিং লেবার খরচ (৳):</label>
+                <div class="relative rounded-md shadow-sm">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-blue-500 font-bold">৳</span>
+                    <input type="number"
+                        id="prod-unloading-cost"
+                        step="0.01"
+                        value="0"
+                        placeholder="অটো-ক্যালকুলেট হবে (এডিটেবল)"
+                        class="block w-full pl-8 pr-3 py-2 bg-blue-50/50 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-blue-700 text-base">
+                </div>
+                <p class="text-[11px] text-gray-400 mt-1">ক্যাটাগরির রেট অনুযায়ী এটি অটো-ক্যালকুলেট হবে। প্রয়োজনে নিজে টাইপ করে পরিবর্তন করতে পারবেন।</p>
+            </div>
+
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded shadow transition-all mt-2">💾 ডাটাবেজে সেভ করুন</button>
+        </form>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h2 class="text-xl font-bold mb-4 text-green-600 border-b pb-2">📊 বর্তমান স্টক লিস্ট (Live Web API)</h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">নাম</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">স্টক</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">কেনা দাম</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">বিক্রি দাম</th>
+                    </tr>
+                </thead>
+                <tbody id="product-tbody" class="bg-white divide-y divide-gray-200 text-sm"></tbody>
+            </table>
+        </div>
+    </div>
+</div>

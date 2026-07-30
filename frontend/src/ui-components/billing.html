@@ -1,0 +1,157 @@
+<div id="billing-screen" class="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="bg-white p-6 rounded-lg shadow-md md:col-span-2 space-y-6">
+        <h2 class="text-xl font-bold text-blue-600 border-b pb-2">🧾 কাস্টমার ও মালের বিবরণ</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="relative">
+                <label class="block text-sm font-medium text-gray-700">কাস্টমারের নাম:</label>
+                <input type="text" id="bill-cust-name" placeholder="যেমন: মো: রহিম"
+                    class="mt-1 block w-full rounded-md p-2 bg-gray-50 border border-gray-300">
+
+                <div id="customer-suggestions"
+                    class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg hidden max-h-48 overflow-y-auto">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">মোবাইল নাম্বার:</label>
+                <input type="text" id="bill-cust-phone" placeholder="017xxxxxxxx"
+                    class="mt-1 block w-full rounded-md p-2 bg-gray-50 border border-gray-300">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">বাবার নাম (Father's Name):</label>
+                <input type="text" id="customer-father" class="w-full border rounded px-3 py-2"
+                    placeholder="বাবার নাম লিখুন">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    ঠিকানা (Address):
+                </label>
+
+                <select id="customer-address" class="w-full border rounded px-3 py-2">
+                    <option value="">ঠিকানা নির্বাচন করুন</option>
+                </select>
+            </div>
+        </div>
+        <div id="booking-notice"
+            class="hidden bg-amber-50 border border-amber-300 rounded-md p-3 text-sm text-amber-800">
+        </div>
+
+        <div class="bg-blue-50 p-4 rounded-lg border border-blue-200 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+            <div class="md:col-span-1">
+                <label class="block text-sm font-medium text-gray-700">প্রোডাক্ট বাছুন:</label>
+                <select id="bill-prod-select"
+                    class="mt-1 block w-full rounded-md p-2 bg-white border border-gray-300"></select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">পরিমাণ (Qty):</label>
+                <input type="number" id="bill-prod-qty" step="0.01" value="1"
+                    class="mt-1 block w-full rounded-md p-2 bg-white border border-gray-300">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">রেট (৳ প্রতি ইউনিট):</label>
+                <input type="number" id="bill-prod-rate" step="0.01"
+                    class="mt-1 block w-full rounded-md p-2 bg-white border border-gray-300">
+            </div>
+            <button type="button" id="add-to-cart-btn"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded w-full">➕ যোগ করুন</button>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="px-4 py-2 text-left">প্রোডাক্ট</th>
+                        <th class="px-4 py-2 text-left">পরিমাণ</th>
+                        <th class="px-4 py-2 text-left">রেট</th>
+                        <th class="px-4 py-2 text-left">মোট</th>
+                        <th class="px-4 py-2 text-center">অ্যাকশন</th>
+                    </tr>
+                </thead>
+                <tbody id="cart-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="bg-gray-50 p-6 rounded-lg shadow-md border border-gray-200 h-fit space-y-4">
+        <h2 class="text-xl font-bold text-gray-800 border-b pb-2">💰 বিলের হিসাব</h2>
+
+        <div class="flex justify-between text-lg">
+            <span>মালের মোট দাম:</span>
+            <span class="font-bold">৳<span id="summary-subtotal">0.00</span></span>
+        </div>
+
+        <hr class="border-gray-300">
+
+        <div class="bg-white p-3 rounded-md border border-gray-200 space-y-2">
+            <label class="block text-xs font-bold text-blue-600 uppercase tracking-wide">🛠️ লেবার খরচ সংক্রান্ত</label>
+            <div>
+                <label class="block text-xs text-gray-600">লেবার খরচ (৳):</label>
+                <input type="text" id="summary-labor-cost" value="0" inputmode="decimal"
+                    oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');"
+                    class="mt-1 block w-full rounded-md p-2 bg-white border border-gray-300 font-bold text-gray-700">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-600">এই খরচটি কে বহন করবে?</label>
+                <select id="summary-labor-bearer"
+                    class="mt-1 block w-full rounded-md p-2 bg-white border border-gray-300 text-sm">
+                    <option value="none">কেউ না (0)</option>
+                    <option value="customer">কাস্টমার দেবে (বিলের সাথে যোগ হবে)</option>
+                    <option value="shop">দোকান দেবে (দোকানের খরচ)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="bg-white p-3 rounded-md border border-gray-200 space-y-2">
+            <label class="block text-xs font-bold text-amber-600 uppercase tracking-wide">🚚 পরিবহন খরচ
+                সংক্রান্ত</label>
+            <div>
+                <label class="block text-xs text-gray-600">গাড়ি ভাড়া / পরিবহন (৳):</label>
+                <input type="text" id="summary-transport-cost" value="0" inputmode="decimal"
+                    oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');"
+                    class="mt-1 block w-full rounded-md p-2 bg-white border border-gray-300 font-bold text-gray-700">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-600">এই খরচটি কে বহন করবে?</label>
+                <select id="summary-transport-bearer"
+                    class="mt-1 block w-full rounded-md p-2 bg-white border border-gray-300 text-sm">
+                    <option value="none">কেউ না (0)</option>
+                    <option value="customer">কাস্টমার দেবে (বিলের সাথে যোগ হবে)</option>
+                    <option value="shop">দোকান দেবে (দোকানের খরচ)</option>
+                </select>
+            </div>
+        </div>
+
+        <hr class="border-gray-300">
+        <div class="flex justify-between text-lg text-red-500 font-bold">
+            <span>পূর্বের বকেয়া:</span>
+            <span>৳<span id="summary-previous-due">0.00</span></span>
+        </div>
+        <div class="flex justify-between text-xl text-blue-700 font-black">
+            <span>সর্বমোট বিল (Payable):</span>
+            <span>৳<span id="summary-total-payable">0.00</span></span>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-800 font-bold">আজ নগদ জমা (Cash Paid):</label>
+            <input type="number" id="summary-cash-paid" value="0"
+                class="mt-1 block w-full rounded-md p-2 bg-yellow-50 border-2 border-yellow-400 text-lg font-bold">
+        </div>
+        <div class="flex items-center mt-3">
+            <input type="checkbox" id="chk-round-off"
+                class="w-4 h-4 text-blue-600 border-gray-300 rounded cursor-pointer">
+            <label for="chk-round-off" class="ml-2 text-sm text-gray-800 font-semibold cursor-pointer">
+                বাকি টাকা ছাড় দিন (Discount)
+            </label>
+        </div>
+
+        <div class="flex justify-between text-lg text-red-600 font-semibold bg-red-50 p-2 rounded">
+            <span>আজকের বাকি (Due):</span>
+            <span>৳<span id="summary-calculated-due">0.00</span></span>
+        </div>
+
+        <button type="button" id="checkout-bill-btn"
+            class="w-full bg-green-600 hover:bg-green-700 text-white font-black py-3 px-4 rounded text-lg shadow-md transition">
+            💾 ইনভয়েস কনফার্ম করুন
+        </button>
+    </div>
+</div>

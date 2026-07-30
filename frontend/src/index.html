@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aman Traders - Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 font-sans">
+
+    <nav class="bg-blue-600 text-white p-4 shadow-md flex justify-between items-center">
+        <div class="flex items-center space-x-6">
+            <h1 class="text-xl font-bold mr-4">AMAN TRADERS</h1>
+            <button id="tab-inventory-btn" class="bg-blue-700 px-4 py-2 rounded font-semibold text-white">📦 ইনভেন্টরি</button>
+            <button id="tab-billing-btn" class="hover:bg-blue-500 px-4 py-2 rounded font-semibold text-gray-200">🧾 নতুন বিল (বিক্রয়)</button>
+            <button id="tab-report-btn" class="hover:bg-blue-500 px-4 py-2 rounded font-semibold text-gray-200">📊 হিসাব ও রিপোর্ট</button>
+            <button id="tab-customer-btn" class="hover:bg-blue-500 px-4 py-2 rounded font-semibold text-gray-200">👥 কাস্টমার খতিয়ান</button>
+            <button id="menu-settings" class="hover:bg-blue-500 px-4 py-2 rounded font-semibold text-gray-200">⚙️ সেটিংস</button>
+        </div>
+        <div id="db-status" class="text-sm bg-green-500 text-white px-3 py-1 rounded-full font-semibold">
+            ● Web API Mode
+        </div>
+    </nav>
+
+    <main id="app-container">
+        <div class="flex flex-col items-center justify-center h-64 text-gray-500 font-medium">
+            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-4"></div>
+            সিস্টেমের মডিউলসমূহ লোড হচ্ছে, দয়া করে অপেক্ষা করুন...
+        </div>
+    </main>
+
+    <script type="module" src="/main.js"></script>
+</body>
+
+</html>

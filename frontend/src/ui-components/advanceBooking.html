@@ -1,0 +1,159 @@
+<div id="booking-screen" class="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+
+    <div class="md:col-span-2 space-y-6">
+        <div class="flex items-center justify-between border-b pb-2">
+            <h2 class="text-xl font-bold text-blue-600">📦 নতুন কাস্টমার ও অগ্রিম বুকিং</h2>
+            <button id="btn-back-to-customers-from-booking"
+                class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-1.5 px-3 rounded text-sm shadow">
+                ⬅️ কাস্টমার তালিকায় ফিরুন
+            </button>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow-md space-y-4">
+            <h3 class="text-base font-bold text-gray-700 border-b pb-2">👤 কাস্টমারের তথ্য</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">কাস্টমারের নাম:</label>
+                    <input type="text" id="booking-cust-name" placeholder="যেমন: মো: রহিম" required
+                        class="mt-1 block w-full rounded-md p-2 bg-gray-50 border border-gray-300">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">মোবাইল নাম্বার:</label>
+                    <input type="text" id="booking-cust-phone" placeholder="017xxxxxxxx"
+                        class="mt-1 block w-full rounded-md p-2 bg-gray-50 border border-gray-300">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">বাবার নাম:</label>
+                    <input type="text" id="booking-cust-father" placeholder="বাবার নাম লিখুন"
+                        class="mt-1 block w-full rounded-md p-2 bg-gray-50 border border-gray-300">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">ঠিকানা:</label>
+                    <select id="booking-cust-address"
+                        class="mt-1 block w-full rounded-md p-2 bg-gray-50 border border-gray-300">
+                        <option value="">ঠিকানা নির্বাচন করুন</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-blue-50 p-6 rounded-lg border border-blue-200 space-y-4">
+            <h3 class="text-base font-bold text-blue-700 border-b border-blue-200 pb-2">🔒 বুকিং করা মাল (দাম লক থাকবে)
+            </h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">প্রোডাক্ট:</label>
+                    <select id="booking-product-select"
+                        class="mt-1 block w-full rounded-md p-2 bg-white border border-gray-300"></select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">পরিমাণ (Qty):</label>
+                    <input type="number" id="booking-qty" step="0.01" placeholder="যেমন: 1000"
+                        class="mt-1 block w-full rounded-md p-2 bg-white border border-gray-300">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">লক করা দাম (৳ প্রতি ইউনিট):</label>
+                    <input type="number" id="booking-locked-price" step="0.01"
+                        class="mt-1 block w-full rounded-md p-2 bg-white border border-gray-300 font-bold text-blue-700">
+                </div>
+                <button type="button" id="booking-add-to-cart-btn"
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded w-full">➕ যোগ
+                    করুন</button>
+            </div>
+
+            <div class="overflow-x-auto bg-white rounded border border-blue-100">
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left">প্রোডাক্ট</th>
+                            <th class="px-4 py-2 text-left">পরিমাণ</th>
+                            <th class="px-4 py-2 text-left">লক দাম</th>
+                            <th class="px-4 py-2 text-left">মোট</th>
+                            <th class="px-4 py-2 text-center">অ্যাকশন</th>
+                        </tr>
+                    </thead>
+                    <tbody id="booking-cart-tbody">
+                        <tr id="booking-cart-empty-row">
+                            <td colspan="5" class="text-center py-3 text-gray-400">এখনো কোনো প্রোডাক্ট যোগ করা হয়নি
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p class="text-xs text-gray-500">💡 এই পরিমাণ মাল পরে এই লক-করা দামেই দেওয়া হবে, তখনকার বাজার দর যাই হোক না
+                কেন। এখন স্টক থেকে কিছু কমবে না — মাল বাস্তবে দেওয়ার সময় বিলিং থেকে স্টক কমবে।</p>
+        </div>
+    </div>
+
+    <div class="bg-gray-50 p-6 rounded-lg shadow-md border border-gray-200 h-fit space-y-4 sticky top-6">
+        <h2 class="text-xl font-bold text-gray-800 border-b pb-2">💰 অগ্রিম জমা</h2>
+
+        <div class="bg-white p-3 rounded-md border border-gray-200 space-y-2">
+            <label class="block text-xs font-bold text-blue-600 uppercase tracking-wide">🛠️ লেবার খরচ সংক্রান্ত</label>
+            <div>
+                <label class="block text-xs text-gray-600">লেবার খরচ (৳):</label>
+                <input type="number" id="booking-labor-advance" step="0.01" value="0"
+                    class="mt-1 block w-full rounded-md p-2 bg-white border border-gray-300 font-bold text-gray-700">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-600">এই খরচটি কে বহন করবে?</label>
+                <select id="booking-labor-bearer"
+                    class="mt-1 block w-full rounded-md p-2 bg-white border border-gray-300 text-sm">
+                    <option value="none">কেউ না (0)</option>
+                    <option value="customer">কাস্টমার দেবে (বুকিং মূল্যের সাথে যোগ হবে)</option>
+                    <option value="shop">দোকান দেবে (দোকানের খরচ)</option>
+                </select>
+            </div>
+            <p class="text-[11px] text-gray-400">ক্যাটাগরির রেট অনুযায়ী এটি অটো-ক্যালকুলেট হবে (billing-এর মতোই)।
+                প্রয়োজনে নিজে টাইপ করে পরিবর্তন করতে পারবেন।</p>
+        </div>
+
+        <div class="bg-white p-3 rounded-md border border-gray-200 space-y-2">
+            <label class="block text-xs font-bold text-amber-600 uppercase tracking-wide">🚚 পরিবহন খরচ
+                সংক্রান্ত</label>
+            <div>
+                <label class="block text-xs text-gray-600">গাড়ি ভাড়া / পরিবহন (৳):</label>
+                <input type="number" id="booking-transport-cost" step="0.01" value="0"
+                    class="mt-1 block w-full rounded-md p-2 bg-white border border-gray-300 font-bold text-gray-700">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-600">এই খরচটি কে বহন করবে?</label>
+                <select id="booking-transport-bearer"
+                    class="mt-1 block w-full rounded-md p-2 bg-white border border-gray-300 text-sm">
+                    <option value="none">কেউ না (0)</option>
+                    <option value="customer">কাস্টমার দেবে (বুকিং মূল্যের সাথে যোগ হবে)</option>
+                    <option value="shop">দোকান দেবে (দোকানের খরচ)</option>
+                </select>
+            </div>
+        </div>
+
+        <hr class="border-gray-300">
+
+        <div class="flex justify-between text-lg">
+            <span>মোট বুকিং মূল্য:</span>
+            <span class="font-bold">৳<span id="booking-total-value">0.00</span></span>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-800 font-bold">আজ মালের বিপরীতে কত টাকা অগ্রিম জমা
+                নিলেন:</label>
+            <input type="number" id="booking-advance-paid" step="0.01" value="0"
+                class="mt-1 block w-full rounded-md p-2 bg-yellow-50 border-2 border-yellow-400 text-lg font-bold">
+        </div>
+
+        <hr class="border-gray-300">
+
+        <div class="flex justify-between text-lg text-green-700 font-black bg-green-50 p-3 rounded">
+            <span>সর্বমোট আজকের অগ্রিম:</span>
+            <span>৳<span id="booking-grand-total-advance">0.00</span></span>
+        </div>
+
+        <button type="button" id="booking-submit-btn"
+            class="w-full bg-green-600 hover:bg-green-700 text-white font-black py-3 px-4 rounded text-lg shadow-md transition">
+            🔒 বুকিং কনফার্ম করুন
+        </button>
+    </div>
+
+</div>
