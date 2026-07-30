@@ -34,11 +34,22 @@ function calculateAutoLaborCostLogic(cart, settings) {
 
 async function populateBookingProductDropdown() {
     const select = document.getElementById('booking-product-select');
+    const priceInput = document.getElementById('booking-locked-price'); // 🎯 নতুন
+    const qtyInput = document.getElementById('booking-qty'); // 🎯 নতুন
     if (!select) return;
 
     try {
         bookingProducts = await InventoryAPI.getProducts();
         select.innerHTML = '';
+
+        // 🎯 নতুন লজিক: ডিফল্ট "প্রোডাক্ট নির্বাচন করুন" অপশন যোগ করা হলো
+        const defaultOpt = document.createElement('option');
+        defaultOpt.value = '';
+        defaultOpt.innerText = 'প্রোডাক্ট নির্বাচন করুন';
+        defaultOpt.selected = true;
+        defaultOpt.disabled = true; // যাতে সিলেক্ট থাকা অবস্থায় বুকিং কার্টে যোগ করা না যায়
+        select.appendChild(defaultOpt);
+
         bookingProducts.forEach(prod => {
             const opt = document.createElement('option');
             opt.value = prod.id;
@@ -46,7 +57,9 @@ async function populateBookingProductDropdown() {
             select.appendChild(opt);
         });
 
-        if (bookingProducts.length > 0) updateLockedPriceField(bookingProducts[0].id);
+        // 🎯 পেজ লোড হওয়ার পর রেট ও পরিমাণ ফিল্ড রিসেট করা
+        if (priceInput) priceInput.value = '';
+        if (qtyInput) qtyInput.value = '1';
 
         laborSettings = await BillingAPI.getLaborSettings();
     } catch (err) {
@@ -56,6 +69,13 @@ async function populateBookingProductDropdown() {
 
 function updateLockedPriceField(productId) {
     const priceInput = document.getElementById('booking-locked-price');
+    
+    // 🎯 নতুন: যদি কোনো প্রোডাক্ট সিলেক্ট করা না থাকে (ডিফল্ট অপশন), তবে রেট ফাঁকা থাকবে
+    if (!productId || productId === '') {
+        if (priceInput) priceInput.value = '';
+        return;
+    }
+
     const selected = bookingProducts.find(p => p.id == productId);
     if (selected && priceInput) priceInput.value = selected.default_selling_price;
 }
@@ -121,7 +141,7 @@ function handleAddToBookingCart() {
     const lockedPrice = parseFloat(priceInput ? priceInput.value : 0) || 0;
 
     if (!prodId || qty <= 0 || lockedPrice <= 0) {
-        ToastUI.showToast("দয়া করে প্রোডাক্ট, সঠিক পরিমাণ ও লক-দাম দিন।", true);
+        ToastUI.showToast("দয়া করে সঠিক প্রোডাক্ট, পরিমাণ ও লক-দাম দিন।", true);
         return;
     }
 
@@ -138,7 +158,11 @@ function handleAddToBookingCart() {
     });
 
     renderBookingCart();
-    if (qtyInput) qtyInput.value = '';
+    if (qtyInput) qtyInput.value = '1';
+
+    // 🎯 কার্টে অ্যাড করার পর ড্রপডাউন ও রেট রিসেট করে দেওয়া
+    if (productSelect) productSelect.value = '';
+    if (priceInput) priceInput.value = '';
 }
 
 // ---------- টোটাল ক্যালকুলেশন ----------
@@ -147,9 +171,9 @@ function updateTotals() {
     const productTotal = bookingCart.reduce((sum, item) => sum + item.totalPrice, 0);
 
     const laborCost = parseFloat(document.getElementById('booking-labor-advance')?.value) || 0;
-    const laborBearer = document.getElementById('booking-labor-bearer')?.value || 'none';
+    const laborBearer = document.getElementById('booking-labor-bearer')?.value || 'customer'; // 🎯 'none' এর বদলে 'customer'
     const transportCost = parseFloat(document.getElementById('booking-transport-cost')?.value) || 0;
-    const transportBearer = document.getElementById('booking-transport-bearer')?.value || 'none';
+    const transportBearer = document.getElementById('booking-transport-bearer')?.value || 'customer'; // 🎯 'none' এর বদলে 'customer'
 
     let totalBookingValue = productTotal;
     if (laborBearer === 'customer') totalBookingValue += laborCost;
@@ -169,21 +193,23 @@ function resetBookingForm() {
     bookingCart = [];
     renderBookingCart();
 
-    const ids = ['booking-cust-name', 'booking-cust-phone', 'booking-cust-father', 'booking-cust-address', 'booking-qty'];
+    const ids = ['booking-cust-name', 'booking-cust-phone', 'booking-cust-father', 'booking-cust-address', 'booking-qty', 'booking-locked-price'];
     ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+
+    const productSelect = document.getElementById('booking-product-select');
+    if (productSelect) productSelect.value = ''; 
 
     const advanceInput = document.getElementById('booking-advance-paid');
     if (advanceInput) advanceInput.value = '0';
     const laborInput = document.getElementById('booking-labor-advance');
     if (laborInput) laborInput.value = '0';
     const laborBearerSelect = document.getElementById('booking-labor-bearer');
-    if (laborBearerSelect) laborBearerSelect.value = 'none';
+    if (laborBearerSelect) laborBearerSelect.value = 'customer'; // 🎯 'none' এর বদলে 'customer'
     const transportInput = document.getElementById('booking-transport-cost');
     if (transportInput) transportInput.value = '0';
     const transportBearerSelect = document.getElementById('booking-transport-bearer');
-    if (transportBearerSelect) transportBearerSelect.value = 'none';
+    if (transportBearerSelect) transportBearerSelect.value = 'customer'; // 🎯 'none' এর বদলে 'customer'
 
-    if (bookingProducts.length > 0) updateLockedPriceField(bookingProducts[0].id);
     updateTotals();
 }
 

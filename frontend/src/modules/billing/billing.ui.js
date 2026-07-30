@@ -53,11 +53,22 @@ function calculateAutoLaborCostLogic(cart, settings) {
 export async function populateBillingDropdown() {
     try {
         const billProdSelect = document.getElementById('bill-prod-select');
+        const billProdRate = document.getElementById('bill-prod-rate'); // 🎯 নতুন
+        const billProdQty = document.getElementById('bill-prod-qty'); // 🎯 নতুন
         if (!billProdSelect) return;
 
         globalProducts = await InventoryAPI.getProducts();
 
         billProdSelect.innerHTML = '';
+
+        // 🎯 নতুন লজিক: ডিফল্ট "প্রোডাক্ট নির্বাচন করুন" অপশন যোগ করা হলো
+        const defaultOpt = document.createElement('option');
+        defaultOpt.value = '';
+        defaultOpt.innerText = 'প্রোডাক্ট নির্বাচন করুন';
+        defaultOpt.selected = true;
+        defaultOpt.disabled = true; // যাতে এটা সিলেক্ট থাকা অবস্থায় কেউ কার্টে যোগ করতে না পারে
+        billProdSelect.appendChild(defaultOpt);
+
         globalProducts.forEach(prod => {
             const opt = document.createElement('option');
             opt.value = prod.id;
@@ -65,7 +76,9 @@ export async function populateBillingDropdown() {
             billProdSelect.appendChild(opt);
         });
 
-        if (globalProducts.length > 0) updateRateField(globalProducts[0].id);
+        // 🎯 পেজ লোড হওয়ার পর রেট ও পরিমাণ ফিল্ড রিসেট করা
+        if (billProdRate) billProdRate.value = '';
+        if (billProdQty) billProdQty.value = '1';
 
         laborSettings = await BillingAPI.getLaborSettings();
     } catch (err) {
@@ -106,6 +119,13 @@ function getLockedBookingsInfo(productId) {
 
 function updateRateField(productId) {
     const billProdRate = document.getElementById('bill-prod-rate');
+
+    // 🎯 নতুন: যদি প্রোডাক্ট সিলেক্ট করা না থাকে (যেমন ডিফল্ট অপশন), তাহলে রেট ফাঁকা থাকবে
+    if (!productId || productId === '') {
+        if (billProdRate) billProdRate.value = '';
+        return;
+    }
+
     const selectedProd = globalProducts.find(p => p.id == productId);
     if (!selectedProd || !billProdRate) return;
 
@@ -130,9 +150,9 @@ function calculateBillSummary() {
     if (!summarySubtotal) return;
 
     const laborCost = parseFloat(summaryLaborCost ? summaryLaborCost.value : 0) || 0;
-    const laborBearer = summaryLaborBearer ? summaryLaborBearer.value : 'none';
+    const laborBearer = summaryLaborBearer ? summaryLaborBearer.value : 'customer'; // 🎯 এখানে পরিবর্তন
     const transportCost = parseFloat(summaryTransportCost ? summaryTransportCost.value : 0) || 0;
-    const transportBearer = summaryTransportBearer ? summaryTransportBearer.value : 'none';
+    const transportBearer = summaryTransportBearer ? summaryTransportBearer.value : 'customer'; // 🎯 এখানে পরিবর্তন
     const cashPaid = parseFloat(summaryCashPaid ? summaryCashPaid.value : 0) || 0;
     const previousDue = parseFloat(prevDueElement ? prevDueElement.innerText : 0) || 0;
 
@@ -269,6 +289,10 @@ function handleAddToCart() {
 
     renderCart();
     if (billProdQty) billProdQty.value = '1';
+    
+    // 🎯 কার্টে মাল অ্যাড করার পর সিলেক্ট বক্স আগের মতো ফাঁকা করে দেওয়া (অপশনাল কিন্তু ইউজার ফ্রেন্ডলি)
+    if (billProdSelect) billProdSelect.value = '';
+    if (billProdRate) billProdRate.value = '';
 }
 
 // ---------- চেকআউট ----------
@@ -294,9 +318,9 @@ async function handleCheckout(checkoutBillBtn) {
     const prevDueElement = document.getElementById('summary-previous-due');
 
     const laborCost = parseFloat(summaryLaborCost ? summaryLaborCost.value : 0) || 0;
-    const laborBearer = summaryLaborBearer ? summaryLaborBearer.value : 'none';
+    const laborBearer = summaryLaborBearer ? summaryLaborBearer.value : 'customer'; // 🎯 এখানে পরিবর্তন
     const transportCost = parseFloat(summaryTransportCost ? summaryTransportCost.value : 0) || 0;
-    const transportBearer = summaryTransportBearer ? summaryTransportBearer.value : 'none';
+    const transportBearer = summaryTransportBearer ? summaryTransportBearer.value : 'customer'; // 🎯 এখানে পরিবর্তন
     const subtotal = parseFloat(summarySubtotal ? summarySubtotal.innerText : 0) || 0;
 
     const uiTotalPayable = parseFloat(summaryTotalPayable ? summaryTotalPayable.innerText : 0) || 0;
@@ -330,7 +354,7 @@ async function handleCheckout(checkoutBillBtn) {
 
         currentDiscountAmount = 0;
         cart = [];
-        customerOpenBookings = []; // 🎯 নতুন — checkout সফল হলে booking-তথ্যও রিসেট
+        customerOpenBookings = []; 
         renderCart();
 
         if (document.getElementById('bill-cust-name')) document.getElementById('bill-cust-name').value = '';
@@ -338,9 +362,9 @@ async function handleCheckout(checkoutBillBtn) {
         if (document.getElementById('customer-father')) document.getElementById('customer-father').value = '';
         if (document.getElementById('customer-address')) document.getElementById('customer-address').value = '';
         if (summaryLaborCost) summaryLaborCost.value = 0;
-        if (summaryLaborBearer) summaryLaborBearer.value = 'none';
+        if (summaryLaborBearer) summaryLaborBearer.value = 'customer'; // 🎯 রিসেট করার সময় পরিবর্তন
         if (summaryTransportCost) summaryTransportCost.value = 0;
-        if (summaryTransportBearer) summaryTransportBearer.value = 'none';
+        if (summaryTransportBearer) summaryTransportBearer.value = 'customer'; // 🎯 রিসেট করার সময় পরিবর্তন
         if (summaryCashPaid) summaryCashPaid.value = 0;
 
         const roundOffCheckbox = document.getElementById('chk-round-off');
