@@ -17,6 +17,7 @@ const CustomerService = {
         let runningDue = 0;
         let totalBought = 0;
         let totalPaid = 0;
+        let totalReturned = 0;
 
         const processedData = transactions.map(row => {
             if (row.type === 'sale') {
@@ -29,6 +30,10 @@ const CustomerService = {
                 if (row.cash_paid > 0) {
                     totalPaid += row.cash_paid;
                 }
+            } else if (row.type === 'return') {
+                // 🎯 নতুন — রিটার্নের ফলে কাস্টমারের বাকি কমে যায় (total_credited এর সমান)
+                runningDue -= (row.total_credited || 0);
+                totalReturned += (row.total_credited || 0);
             } else {
                 runningDue -= (row.cash_paid || 0);
                 totalPaid += (row.cash_paid || 0);
@@ -38,7 +43,7 @@ const CustomerService = {
             return row;
         });
 
-        return { processedData, summary: { totalBought, totalPaid, runningDue } };
+        return { processedData, summary: { totalBought, totalPaid, totalReturned, runningDue } };
     },
 
     async generateLedgerData(customer) {
@@ -58,6 +63,18 @@ const CustomerService = {
         const { data: payData, error: payErr } = await CustomerRepository.getCustomerPayments(id);
         if (payErr) throw payErr;
         const payments = payData || [];
+
+        // 🎯 নতুন — এই কাস্টমারের রিটার্ন হিস্ট্রি
+        const { data: returnsData, error: returnsErr } = await CustomerRepository.getReturnsByCustomer(id);
+        if (returnsErr) throw returnsErr;
+        const returns = returnsData || [];
+
+        let allReturnItems = [];
+        if (returns.length > 0) {
+            const returnIds = returns.map(r => r.id);
+            const { data: retItemsData, error: retItemsErr } = await CustomerRepository.getReturnItemsByReturnIds(returnIds);
+            if (!retItemsErr && retItemsData) allReturnItems = retItemsData;
+        }
 
         let mergedData = [];
 
@@ -82,6 +99,21 @@ const CustomerService = {
                 cash_paid: parseFloat(p.amount_paid || 0), raw_date: p.payment_date || p.created_at,
                 formattedDate: this.formatBanglaDateTime(p.payment_date || p.created_at),
                 note: p.note || null // 🎯 নতুন
+            });
+        });
+
+        // 🎯 নতুন — রিটার্ন এন্ট্রি মার্জ করা
+        returns.forEach(r => {
+            const currentItems = allReturnItems.filter(item => item.return_id === r.id);
+            mergedData.push({
+                id: r.id, date: new Date(r.created_at), type: 'return',
+                items: currentItems,
+                labor_cost: parseFloat(r.labor_cost || 0), labor_bearer: r.labor_bearer,
+                transport_cost: parseFloat(r.transport_cost || 0), transport_bearer: r.transport_bearer,
+                subtotal: parseFloat(r.subtotal || 0),
+                total_credited: parseFloat(r.total_credited || 0),
+                raw_date: r.created_at,
+                formattedDate: this.formatBanglaDateTime(r.created_at)
             });
         });
 
@@ -202,6 +234,55 @@ const CustomerService = {
         }
 
         return { message: "বুকিং সফলভাবে সংরক্ষিত হয়েছে", bookingIds, customerId };
+    },
+
+    // 🎯 নতুন — "মাল ফেরত" প্রসেস করার লজিক। subtotal আর total_credited এখানে সার্ভার-সাইডে
+    // আবার হিসাব করা হচ্ছে (frontend এর পাঠানো ভ্যালু সরাসরি বিশ্বাস না করে), কারণ এটা টাকার হিসাব।
+    async processReturn(returnData) {
+        const { customerId, customerName, customerPhone, items, laborCost, laborBearer, transportCost, transportBearer } = returnData;
+
+        if (!customerId || !items || items.length === 0) {
+            throw new Error("কাস্টমার এবং অন্তত একটা প্রোডাক্ট দিন।");
+        }
+        for (const item of items) {
+            if (!item.productId || item.quantity <= 0 || item.rate <= 0) {
+                throw new Error("প্রতিটা প্রোডাক্টের পরিমাণ ও রেট সঠিকভাবে দিন।");
+            }
+        }
+
+        const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
+        const finalLaborCost = parseFloat(laborCost) || 0;
+        const finalTransportCost = parseFloat(transportCost) || 0;
+        const finalLaborBearer = laborBearer || 'customer';
+        const finalTransportBearer = transportBearer || 'customer';
+
+        let totalCredited = subtotal;
+        if (finalLaborBearer === 'customer') totalCredited -= finalLaborCost;
+        if (finalTransportBearer === 'customer') totalCredited -= finalTransportCost;
+        if (totalCredited < 0) totalCredited = 0;
+
+        const cartForRPC = items.map(item => ({
+            product_id: item.productId,
+            quantity: item.quantity,
+            rate: item.rate,
+            total_price: item.quantity * item.rate
+        }));
+
+        const { data, error } = await CustomerRepository.returnRPC({
+            p_cart: cartForRPC,
+            p_customer_id: customerId,
+            p_customer_name: customerName || null,
+            p_customer_phone: customerPhone || null,
+            p_labor_cost: finalLaborCost,
+            p_labor_bearer: finalLaborBearer,
+            p_transport_cost: finalTransportCost,
+            p_transport_bearer: finalTransportBearer,
+            p_subtotal: subtotal,
+            p_total_credited: totalCredited
+        });
+
+        if (error) throw error;
+        return data;
     }
 };
 

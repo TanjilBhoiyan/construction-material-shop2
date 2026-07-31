@@ -34,11 +34,11 @@ due আপডেট, sale insert, sale_items insert) — একটা ফেল 
     3.
     4.Mobile number 11 digit er kom ba besi hoite parbe na 
     5.Ekadik mobile number add korte parbo 
-    6.Customer jodi ogrim tk diye rakhe ai path ta korte hobe 
+    6.
     7.Mal kinar por firok neyar feature 
     8. 
     9.
-    10.booking chara onno product add korle booking er amount theke kete fele
+    10.
 # Hisab o Report (হিসাব ও রিপোর্ট)- kaj baki ase
     1. 
     2.

@@ -74,6 +74,17 @@ const CustomerController = {
         } catch (error) {
             res.status(500).json({ message: error.message });
         }
+    },
+
+    // 🎯 নতুন — POST /api/customers/:id/return
+    async submitReturn(req, res) {
+        try {
+            const customerId = parseInt(req.params.id);
+            const result = await CustomerService.processReturn({ ...req.body, customerId });
+            res.status(200).json(result);
+        } catch (error) {
+            res.status(400).json({ message: error.message });
+        }
     }
 };
 

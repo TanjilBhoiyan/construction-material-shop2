@@ -1,21 +1,27 @@
-const supabase = require('../../config/db');
+const pool = require('../../config/pgClient');
 
 const ReportRepository = {
     async getSalesByDate(startIso, endIso) {
-        return await supabase
-            .from('sales')
-            .select('*')
-            .gte('created_at', startIso)
-            .lte('created_at', endIso)
-            .order('created_at', { ascending: false });
+        try {
+            const result = await pool.query(
+                'SELECT * FROM sales WHERE created_at >= $1 AND created_at <= $2 ORDER BY created_at DESC',
+                [startIso, endIso]
+            );
+            return { data: result.rows, error: null };
+        } catch (error) {
+            return { data: null, error };
+        }
     },
     async getInventoryLogsByDate(startIso, endIso) {
-        return await supabase
-            .from('inventory_logs')
-            .select('*')
-            .gte('created_at', startIso)
-            .lte('created_at', endIso)
-            .order('created_at', { ascending: false });
+        try {
+            const result = await pool.query(
+                'SELECT * FROM inventory_logs WHERE created_at >= $1 AND created_at <= $2 ORDER BY created_at DESC',
+                [startIso, endIso]
+            );
+            return { data: result.rows, error: null };
+        } catch (error) {
+            return { data: null, error };
+        }
     }
 };
 

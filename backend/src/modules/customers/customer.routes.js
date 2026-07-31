@@ -7,5 +7,6 @@ router.get('/:id/ledger', CustomerController.getLedger);
 router.post('/:id/payment', CustomerController.submitPayment);
 router.get('/:id/open-bookings', CustomerController.getOpenBookings);
 router.post('/bookings', CustomerController.createBooking);
+router.post('/:id/return', CustomerController.submitReturn);
 
 module.exports = router;

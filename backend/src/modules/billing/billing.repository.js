@@ -1,40 +1,56 @@
-const supabase = require('../../config/db');
+const pool = require('../../config/pgClient');
 
 const BillingRepository = {
     async getLaborSettings() {
-        return await supabase.from('labor_settings').select('*');
+        try {
+            const result = await pool.query('SELECT * FROM labor_settings');
+            return { data: result.rows, error: null };
+        } catch (error) {
+            return { data: null, error };
+        }
     },
-    async getProductStock(productId) {
-        return await supabase.from('products').select('current_stock, name').eq('id', productId).single();
-    },
-    async updateProductStock(productId, newStock) {
-        return await supabase.from('products').update({ current_stock: newStock }).eq('id', productId);
-    },
-    async getCustomerByPhone(phone) {
-        return await supabase.from('customers').select('*').eq('phone', phone).maybeSingle();
-    },
-    async getCustomerByName(name) {
-        return await supabase.from('customers').select('*').eq('name', name).maybeSingle();
-    },
-    async updateCustomer(id, data) {
-        return await supabase.from('customers').update(data).eq('id', id);
-    },
-    async insertCustomer(data) {
-        return await supabase.from('customers').insert([data]).select();
-    },
-    async insertSale(data) {
-        return await supabase.from('sales').insert([data]).select();
-    },
-    async insertSaleItems(data) {
-        return await supabase.from('sale_items').insert(data);
-    },
-    async insertSaleItems(data) {
-        return await supabase.from('sale_items').insert(data);
-    },
-
-    // 🎯 নতুন — পুরো checkout একটা atomic transaction হিসেবে চলে (process_checkout SQL ফাংশন)
     async checkoutRPC(params) {
-        return await supabase.rpc('process_checkout', params);
+        try {
+            const result = await pool.query(
+                `SELECT process_checkout(
+                    p_cart := $1::jsonb,
+                    p_customer_name := $2,
+                    p_customer_phone := $3,
+                    p_father_name := $4,
+                    p_customer_address := $5,
+                    p_labor_cost := $6,
+                    p_labor_bearer := $7,
+                    p_transport_cost := $8,
+                    p_transport_bearer := $9,
+                    p_subtotal := $10,
+                    p_total_payable := $11,
+                    p_cash_paid := $12,
+                    p_due := $13,
+                    p_previous_due := $14,
+                    p_discount_amount := $15
+                ) AS result`,
+                [
+                    JSON.stringify(params.p_cart),
+                    params.p_customer_name,
+                    params.p_customer_phone,
+                    params.p_father_name,
+                    params.p_customer_address,
+                    params.p_labor_cost,
+                    params.p_labor_bearer,
+                    params.p_transport_cost,
+                    params.p_transport_bearer,
+                    params.p_subtotal,
+                    params.p_total_payable,
+                    params.p_cash_paid,
+                    params.p_due,
+                    params.p_previous_due,
+                    params.p_discount_amount
+                ]
+            );
+            return { data: result.rows[0].result, error: null };
+        } catch (error) {
+            return { data: null, error };
+        }
     }
 };
 

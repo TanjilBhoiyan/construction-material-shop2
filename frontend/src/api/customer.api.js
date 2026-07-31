@@ -46,5 +46,17 @@ export const CustomerAPI = {
     const res = await fetch(url);
     if (!res.ok) return [];
     return await res.json();
-}
+},
+
+    // 🎯 নতুন — "মাল ফেরত" ফিচারের জন্য
+    async submitReturn(custId, returnData) {
+        const res = await fetch(`${API_BASE}/${custId}/return`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(returnData)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'মাল ফেরত সেভ করতে সমস্যা হয়েছে');
+        return data;
+    }
 };

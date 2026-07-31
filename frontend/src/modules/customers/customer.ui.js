@@ -2,6 +2,7 @@ import { CustomerAPI } from '../../api/customer.api.js';
 import { InventoryAPI } from '../../api/inventory.api.js';
 import { ToastUI } from '../../shared/utils/toast.js';
 import { initQuickBookingModal } from './booking.ui.js';
+import { initReturnModal } from './returnProduct.ui.js';
 
 // 🎯 পেজিনেশন স্টেট এখানে (frontend-এ) — backend-এ গ্লোবাল ভ্যারিয়েবলে রাখলে
 // একজনের পেজ-নাম্বার আরেকজনের রিকোয়েস্টে মিশে যেত।
@@ -79,6 +80,24 @@ async function openCustomerLedger(customer) {
             };
         }
 
+        // 🎯 নতুন — "মাল ফেরত নিন" বাটন
+        const returnBtn = document.getElementById('btn-open-return-modal');
+        if (returnBtn) {
+            returnBtn.onclick = () => {
+                const modal = document.getElementById('return-modal');
+                if (modal) modal.classList.remove('hidden');
+                initReturnModal(customer, () => openCustomerLedger(customer)); // সফল হলে ledger রিফ্রেশ
+            };
+        }
+
+        const closeReturnBtn = document.getElementById('btn-close-return-modal');
+        if (closeReturnBtn) {
+            closeReturnBtn.onclick = () => {
+                const modal = document.getElementById('return-modal');
+                if (modal) modal.classList.add('hidden');
+            };
+        }
+
     } catch (err) {
         console.error("Ledger Load Error:", err.message);
         ToastUI.showToast("খাতা লোড করতে সমস্যা হয়েছে ভাই!", true);
@@ -122,6 +141,42 @@ function renderLedgerTable(mergedData, summary, tbody, detailsView, mainListArea
                     let qty = item.quantity || 0;
                     let unit = item.products ? item.products.unit : '';
                     let totalPrice = rate * qty;
+
+                    html += `
+                    <tr class="hover:bg-gray-50">
+                        <td class="border border-gray-300 px-4 py-2 text-left text-sm text-gray-700">${idx + 1}. ${prodName}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-sm text-gray-700">${qty} ${unit}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-sm bg-yellow-50/40">৳${rate}</td>
+                        <td class="border border-gray-300 px-2 py-2 text-sm bg-pink-50/40">৳${totalPrice}</td>
+                    </tr>`;
+                });
+            } else {
+                html += `<tr><td class="border border-gray-300 px-4 py-2 text-left text-sm text-gray-400 italic" colspan="4">কোনো মালের তালিকা নেই</td></tr>`;
+            }
+        } else if (row.type === 'return') {
+            // 🎯 নতুন — "মাল ফেরত" এন্ট্রি, মেমোর মতোই দেখতে কিন্তু rose রঙে
+            let rowSpan = (row.items && row.items.length > 0) ? row.items.length + 1 : 2;
+            let laborText = row.labor_cost > 0 ? `৳${row.labor_cost}<br><span class="text-xs text-gray-500">(${row.labor_bearer})</span>` : '—';
+            let transportText = row.transport_cost > 0 ? `৳${row.transport_cost}<br><span class="text-xs text-gray-500">(${row.transport_bearer})</span>` : '—';
+
+            html += `
+            <tr class="bg-rose-50/30 border-t-[3px] border-gray-400">
+                <td class="border border-gray-300 px-2 py-3 align-top whitespace-nowrap text-xs text-gray-700 bg-gray-50" rowspan="${rowSpan}">${row.formattedDate}</td>
+                <td class="border border-gray-300 px-4 py-2 font-bold text-left text-rose-700 bg-rose-100/50" colspan="4">↩️ মাল ফেরত #${row.id}</td>
+                <td class="border border-gray-300 px-2 py-2 align-middle text-purple-700 font-medium bg-purple-50/30" rowspan="${rowSpan}">${laborText}</td>
+                <td class="border border-gray-300 px-2 py-2 align-middle text-indigo-700 font-medium bg-indigo-50/30" rowspan="${rowSpan}">${transportText}</td>
+                <td class="border border-gray-300 px-2 py-2 align-middle font-bold text-rose-700 bg-rose-50/50" rowspan="${rowSpan}">-৳${row.subtotal.toFixed(2)}</td>
+                <td class="border border-gray-300 px-2 py-2 align-middle text-green-700 font-bold bg-green-50/50" rowspan="${rowSpan}">৳${row.total_credited.toFixed(2)}</td>
+                <td class="border border-gray-300 px-2 py-2 align-middle font-bold bg-gray-100 ${dueColor}" rowspan="${rowSpan}">৳${row.current_due.toFixed(2)}</td>
+            </tr>`;
+
+            if (row.items && row.items.length > 0) {
+                row.items.forEach((item, idx) => {
+                    let prodName = item.products ? item.products.name : 'মাল';
+                    let rate = item.rate || 0;
+                    let qty = item.quantity || 0;
+                    let unit = item.products ? item.products.unit : '';
+                    let totalPrice = item.total_price || (rate * qty);
 
                     html += `
                     <tr class="hover:bg-gray-50">
@@ -208,6 +263,7 @@ function setupPaymentLogics() {
 export async function fetchCustomers(searchQuery = '') {
     const customerTbody = document.getElementById('customer-tbody');
     const pageInfo = document.getElementById('customer-page-info');
+    const marketDueEl = document.getElementById('total-market-due'); // 🎯 নতুন — আগেই ধরে রাখা হলো, যাতে পরে স্ক্রিন বদলে গেলেও ক্র্যাশ না করে
     if (!customerTbody) return;
 
     try {
@@ -217,7 +273,7 @@ export async function fetchCustomers(searchQuery = '') {
         customerTbody.innerHTML = '';
         if (!customers || customers.length === 0) {
             customerTbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-gray-500">কোনো কাস্টমার পাওয়া যায়নি।</td></tr>`;
-            document.getElementById('total-market-due').innerText = totalMarketDue.toFixed(2);
+            if (marketDueEl) marketDueEl.innerText = totalMarketDue.toFixed(2);
             setupPaginationButtons(false);
             return;
         }
@@ -245,7 +301,7 @@ export async function fetchCustomers(searchQuery = '') {
             customerTbody.appendChild(row);
         });
 
-        document.getElementById('total-market-due').innerText = totalMarketDue.toFixed(2);
+        if (marketDueEl) marketDueEl.innerText = totalMarketDue.toFixed(2);
         pageInfo.innerText = isSearching ? `সার্চ রেজাল্ট: ${customers.length} জন` : `পেজ: ${currentPage}`;
         setupPaginationButtons(!isSearching && customers.length === ITEMS_PER_PAGE);
 
@@ -253,7 +309,6 @@ export async function fetchCustomers(searchQuery = '') {
         console.error("Customer loading failed:", err.message);
     }
 }
-
 // ---------------------------------------------------------
 // 🚀 INITIALIZER
 // ---------------------------------------------------------

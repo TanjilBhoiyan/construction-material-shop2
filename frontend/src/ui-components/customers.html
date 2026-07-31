@@ -77,9 +77,14 @@
             ⬅️ কাস্টমার তালিকায় ফিরুন
         </button>
         <h4 class="text-xl font-bold text-blue-600 mb-0">📜 কাস্টমার লেজার খতিয়ান</h4>
-        <button id="btn-open-quick-booking" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-1.5 px-3 rounded text-sm shadow">
-            🔒 নতুন আইটেম বুকিং করুন
-        </button>
+        <div class="flex items-center gap-2">
+            <button id="btn-open-return-modal" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-1.5 px-3 rounded text-sm shadow">
+                ↩️ মাল ফেরত নিন
+            </button>
+            <button id="btn-open-quick-booking" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-1.5 px-3 rounded text-sm shadow">
+                🔒 নতুন আইটেম বুকিং করুন
+            </button>
+        </div>
     </div>
 
     <div class="bg-gray-50 rounded-lg p-4 mb-4 border border-gray-200 shadow-sm">
@@ -238,6 +243,102 @@
         <button type="button" id="booking-submit-btn"
             class="w-full bg-green-600 hover:bg-green-700 text-white font-black py-3 px-4 rounded text-lg shadow-md transition">
             🔒 বুকিং কনফার্ম করুন
+        </button>
+    </div>
+</div>
+<!-- 🎯 মাল ফেরত নেওয়ার মডাল — quick-booking-modal এর মতো cart-style + লেবার/পরিবহন খরচ -->
+<div id="return-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 space-y-4">
+        <div class="flex justify-between items-center border-b pb-2">
+            <h3 class="text-lg font-bold text-rose-600">↩️ মাল ফেরত — <span id="return-cust-name-label"></span></h3>
+            <button id="btn-close-return-modal" class="bg-gray-400 hover:bg-gray-500 text-white px-3 py-1 rounded text-sm font-medium">✕ বন্ধ করুন</button>
+        </div>
+
+        <div class="bg-rose-50 p-4 rounded-lg border border-rose-200 space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">প্রোডাক্ট:</label>
+                    <select id="return-product-select" class="mt-1 block w-full rounded-md p-2 bg-white border border-gray-300"></select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">ফেরত পরিমাণ (Qty):</label>
+                    <input type="number" id="return-qty" step="0.01" placeholder="যেমন: 10"
+                        class="mt-1 block w-full rounded-md p-2 bg-white border border-gray-300">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">রেট (৳ প্রতি ইউনিট):</label>
+                    <input type="number" id="return-rate" step="0.01"
+                        class="mt-1 block w-full rounded-md p-2 bg-white border border-gray-300 font-bold text-rose-700">
+                </div>
+                <button type="button" id="return-add-to-cart-btn"
+                    class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded w-full">➕ যোগ করুন</button>
+            </div>
+
+            <div class="overflow-x-auto bg-white rounded border border-rose-100">
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left">প্রোডাক্ট</th>
+                            <th class="px-4 py-2 text-left">পরিমাণ</th>
+                            <th class="px-4 py-2 text-left">রেট</th>
+                            <th class="px-4 py-2 text-left">মোট</th>
+                            <th class="px-4 py-2 text-center">অ্যাকশন</th>
+                        </tr>
+                    </thead>
+                    <tbody id="return-cart-tbody">
+                        <tr id="return-cart-empty-row"><td colspan="5" class="text-center py-3 text-gray-400">এখনো কোনো প্রোডাক্ট যোগ করা হয়নি</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-white p-3 rounded-md border border-gray-200 space-y-2">
+            <label class="block text-xs font-bold text-blue-600 uppercase tracking-wide">🛠️ লেবার খরচ সংক্রান্ত (মাল দোকানে আনতে)</label>
+            <div>
+                <label class="block text-xs text-gray-600">লেবার খরচ (৳):</label>
+                <input type="number" id="return-labor-cost" step="0.01" value="0"
+                    class="mt-1 block w-full rounded-md p-2 bg-white border border-gray-300 font-bold text-gray-700">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-600">এই খরচটি কে বহন করবে?</label>
+                <select id="return-labor-bearer" class="mt-1 block w-full rounded-md p-2 bg-white border border-gray-300 text-sm">
+                    <option value="customer">কাস্টমার বহন করবে (ফেরতের টাকা থেকে বাদ যাবে)</option>
+                    <option value="shop">দোকান বহন করবে (ফেরতের টাকায় প্রভাব পড়বে না)</option>
+                    <option value="none">কেউ না (0)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="bg-white p-3 rounded-md border border-gray-200 space-y-2">
+            <label class="block text-xs font-bold text-amber-600 uppercase tracking-wide">🚚 পরিবহন খরচ সংক্রান্ত</label>
+            <div>
+                <label class="block text-xs text-gray-600">গাড়ি ভাড়া / পরিবহন (৳):</label>
+                <input type="number" id="return-transport-cost" step="0.01" value="0"
+                    class="mt-1 block w-full rounded-md p-2 bg-white border border-gray-300 font-bold text-gray-700">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-600">এই খরচটি কে বহন করবে?</label>
+                <select id="return-transport-bearer" class="mt-1 block w-full rounded-md p-2 bg-white border border-gray-300 text-sm">
+                    <option value="customer">কাস্টমার বহন করবে (ফেরতের টাকা থেকে বাদ যাবে)</option>
+                    <option value="shop">দোকান বহন করবে (ফেরতের টাকায় প্রভাব পড়বে না)</option>
+                    <option value="none">কেউ না (0)</option>
+                </select>
+            </div>
+        </div>
+
+        <hr class="border-gray-300">
+        <div class="flex justify-between text-md text-gray-600">
+            <span>মালের মোট মূল্য:</span>
+            <span>৳<span id="return-subtotal">0.00</span></span>
+        </div>
+        <div class="flex justify-between text-lg bg-rose-50 p-3 rounded">
+            <span class="font-bold">কাস্টমার সর্বমোট যা ফেরত পাবে:</span>
+            <span class="font-bold text-rose-700">৳<span id="return-total-value">0.00</span></span>
+        </div>
+
+        <button type="button" id="return-submit-btn"
+            class="w-full bg-rose-600 hover:bg-rose-700 text-white font-black py-3 px-4 rounded text-lg shadow-md transition">
+            ↩️ ফেরত নিশ্চিত করুন
         </button>
     </div>
 </div>
