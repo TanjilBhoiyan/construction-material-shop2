@@ -35,7 +35,7 @@ due আপডেট, sale insert, sale_items insert) — একটা ফেল 
     4.Mobile number 11 digit er kom ba besi hoite parbe na 
     5.Ekadik mobile number add korte parbo 
     6.
-    7.Mal kinar por firok neyar feature 
+    7.
     8. 
     9.
     10.

@@ -198,37 +198,95 @@ const CustomerRepository = {
         }
     },
 
+    // 🎯 returnRPC — আগে এটা Postgres এর process_return() ফাংশনকে RPC call করতো।
+    // এখন থেকে পুরো লজিক এখানে সরাসরি JavaScript এ, কিন্তু নিরাপত্তার জন্য পুরো কাজটা
+    // BEGIN...COMMIT/ROLLBACK এর ভিতরে wrap করা — যাতে মাঝপথে কোনো ধাপ fail করলে
+    // স্টক ফেরত যোগ হওয়া, কাস্টমারের বাকি কমা, রিটার্ন রেকর্ড সেভ হওয়া ইত্যাদির
+    // কোনোটাই আংশিকভাবে সেভ না থেকে যায়। ফাংশনের নাম আর return shape ({data, error})
+    // আগের মতোই রাখা হয়েছে, তাই customer.service.js / customer.controller.js এ
+    // কিছু বদলাতে হয়নি।
     async returnRPC(params) {
+        const client = await pool.connect();
         try {
-            const result = await pool.query(
-                `SELECT process_return(
-                    p_cart := $1::jsonb,
-                    p_customer_id := $2,
-                    p_customer_name := $3,
-                    p_customer_phone := $4,
-                    p_labor_cost := $5,
-                    p_labor_bearer := $6,
-                    p_transport_cost := $7,
-                    p_transport_bearer := $8,
-                    p_subtotal := $9,
-                    p_total_credited := $10
-                ) AS result`,
+            await client.query('BEGIN');
+
+            const cart = params.p_cart;
+
+            // ১. স্টক ফেরত যোগ করা
+            for (const item of cart) {
+                const productId = item.product_id;
+                const qty = parseFloat(item.quantity);
+
+                const updateRes = await client.query(
+                    'UPDATE products SET current_stock = current_stock + $1 WHERE id = $2',
+                    [qty, productId]
+                );
+
+                if (updateRes.rowCount === 0) {
+                    throw new Error(`PRODUCT_NOT_FOUND|${productId}`);
+                }
+            }
+
+            // ২. কাস্টমারের বাকি থেকে টাকা বাদ (row lock সহ, ঋণাত্মক হলে জমা/ক্রেডিট হয়ে যাবে)
+            const custRes = await client.query(
+                'SELECT total_due FROM customers WHERE id = $1 FOR UPDATE',
+                [params.p_customer_id]
+            );
+
+            if (custRes.rows.length === 0) {
+                throw new Error(`CUSTOMER_NOT_FOUND|${params.p_customer_id}`);
+            }
+
+            const currentDue = parseFloat(custRes.rows[0].total_due);
+
+            await client.query(
+                'UPDATE customers SET total_due = $1 WHERE id = $2',
+                [currentDue - params.p_total_credited, params.p_customer_id]
+            );
+
+            // ৩. product_returns টেবিলে হেডার সেভ
+            const returnRes = await client.query(
+                `INSERT INTO product_returns (
+                    customer_id, customer_name, customer_phone,
+                    subtotal, labor_cost, labor_bearer, transport_cost, transport_bearer, total_credited
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                RETURNING id`,
                 [
-                    JSON.stringify(params.p_cart),
                     params.p_customer_id,
                     params.p_customer_name,
                     params.p_customer_phone,
+                    params.p_subtotal,
                     params.p_labor_cost,
                     params.p_labor_bearer,
                     params.p_transport_cost,
                     params.p_transport_bearer,
-                    params.p_subtotal,
                     params.p_total_credited
                 ]
             );
-            return { data: result.rows[0].result, error: null };
+            const newReturnId = returnRes.rows[0].id;
+
+            // ৪. product_return_items টেবিলে কার্টের আইটেম সেভ
+            for (const item of cart) {
+                await client.query(
+                    `INSERT INTO product_return_items (return_id, product_id, quantity, rate, total_price)
+                     VALUES ($1, $2, $3, $4, $5)`,
+                    [newReturnId, item.product_id, item.quantity, item.rate, item.total_price]
+                );
+            }
+
+            await client.query('COMMIT');
+
+            return {
+                data: { message: 'মাল ফেরত সফলভাবে সংরক্ষিত হয়েছে', returnId: newReturnId },
+                error: null
+            };
+
         } catch (error) {
+            await client.query('ROLLBACK');
             return { data: null, error };
+        } finally {
+            client.release();
         }
     },
 
