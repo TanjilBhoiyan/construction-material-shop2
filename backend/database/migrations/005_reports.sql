@@ -1,0 +1,26 @@
+-- ============================================================
+-- Module 05: REPORTS
+-- Tables : (এই মডিউলের নিজস্ব কোনো টেবিল নেই)
+--
+-- report.repository.js এ মাত্র দুইটা ফাংশন, দুটোই অন্য মডিউলের
+-- টেবিল শুধু READ করে:
+--
+--   getSalesByDate(start, end)
+--       → sales টেবিল          (Module 04 — 004_billing.sql)
+--
+--   getInventoryLogsByDate(start, end)
+--       → inventory_logs টেবিল (Module 01 — 001_inventory.sql)
+--
+-- report.service.js এর বাকি সব হিসাব (daily summary, profit,
+-- labor ledger) পুরোটাই JavaScript এ রানটাইমে হয় — কোনো
+-- summary/cache টেবিল ব্যবহার হয় না।
+--
+-- তাই এখানে কোনো CREATE TABLE নেই। ফাইলটা রাখা হলো দুই কারণে:
+--   ১. পাঁচটা মডিউলের numbering সম্পূর্ণ থাকে
+--   ২. ভবিষ্যতে reports এর নিজস্ব টেবিল লাগলে (যেমন monthly
+--      summary cache) সেটা এখানে যোগ করা যাবে
+--
+-- Run : 001_inventory.sql ও 004_billing.sql এর পরে
+-- ============================================================
+
+-- (ইচ্ছাকৃতভাবে খালি)

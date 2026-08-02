@@ -25,7 +25,7 @@ due আপডেট, sale insert, sale_items insert) — একটা ফেল 
     5.
     6.
     7.
-    8.
+    8.tin er inventory ta aro batter architecher e nite hbe 
     9.
     10.
 # Noton Bill(Bikroy) নতুন বিল (বিক্রয়)- kaj baki ase
@@ -35,7 +35,7 @@ due আপডেট, sale insert, sale_items insert) — একটা ফেল 
     4.Mobile number 11 digit er kom ba besi hoite parbe na 
     5.Ekadik mobile number add korte parbo 
     6.
-    7.
+    7.tin er inventory ta aro batter architecher e nite hbe 
     8. 
     9.
     10.
