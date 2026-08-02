@@ -1,6 +1,21 @@
 const pool = require('../../config/pgClient');
 
 const CustomerRepository = {
+    // 🎯 নতুন — এখন থেকে ledger customer_id দিয়ে টানা হয়, phone/name matching এর উপর
+    // আর ভরসা করা হয় না। এতে multiple phone number থাকলেও সব sale ঠিকভাবে দেখা যাবে।
+    async getSalesByCustomerId(customerId) {
+        try {
+            const result = await pool.query(
+                'SELECT * FROM sales WHERE customer_id = $1',
+                [customerId]
+            );
+            return { data: result.rows, error: null };
+        } catch (error) {
+            return { data: null, error };
+        }
+    },
+
+    // ⚠️ পুরনো ফাংশন — নতুন কোনো জায়গায় ব্যবহার করা উচিত না, শুধু backward-compat এর জন্য রাখা হলো।
     async getSalesByCustomer(phone, name) {
         try {
             let result;
@@ -16,6 +31,52 @@ const CustomerRepository = {
                 );
             }
             return { data: result.rows, error: null };
+        } catch (error) {
+            return { data: null, error };
+        }
+    },
+
+    // 🎯 নতুন — এই ফোন নম্বরটা customer_phones টেবিলে কার সাথে যুক্ত আছে খুঁজে বের করে
+    // (primary বা secondary যেকোনো নম্বর দিয়েই match হবে, কারণ phone কলামটা globally UNIQUE)
+    async findCustomerIdByAnyPhone(phone) {
+        try {
+            const result = await pool.query(
+                `SELECT c.id, c.total_due, c.name, c.father_name, c.customer_address
+                 FROM customer_phones cp
+                 JOIN customers c ON c.id = cp.customer_id
+                 WHERE cp.phone = $1
+                 LIMIT 1`,
+                [phone]
+            );
+            return { data: result.rows[0] || null, error: null };
+        } catch (error) {
+            return { data: null, error };
+        }
+    },
+
+    // 🎯 নতুন — কাস্টমারের সব ফোন নম্বর (ledger/প্রোফাইল পেজে দেখানোর জন্য)
+    async getPhonesByCustomerId(customerId) {
+        try {
+            const result = await pool.query(
+                'SELECT id, phone, is_primary, label, created_at FROM customer_phones WHERE customer_id = $1 ORDER BY is_primary DESC, created_at ASC',
+                [customerId]
+            );
+            return { data: result.rows, error: null };
+        } catch (error) {
+            return { data: null, error };
+        }
+    },
+
+    // 🎯 নতুন — কাস্টমারের নামে আরেকটা ফোন নম্বর যোগ করা (multi-phone ফিচার)
+    // phone গ্লোবালি UNIQUE, তাই অন্য কোনো কাস্টমারের নম্বরের সাথে conflict করলে এরর দিবে।
+    async addPhoneToCustomer(customerId, phone, label = null, isPrimary = false) {
+        try {
+            const result = await pool.query(
+                `INSERT INTO customer_phones (customer_id, phone, label, is_primary)
+                 VALUES ($1, $2, $3, $4) RETURNING *`,
+                [customerId, phone, label, isPrimary]
+            );
+            return { data: result.rows[0], error: null };
         } catch (error) {
             return { data: null, error };
         }
@@ -140,6 +201,8 @@ const CustomerRepository = {
         }
     },
 
+    // 🎯 নতুন কাস্টমার তৈরি হওয়ার সাথে সাথে (phone দেওয়া থাকলে) customer_phones টেবিলেও
+    // primary নম্বর হিসেবে সেভ হয় — যাতে পরে multi-phone lookup এই নম্বর দিয়েও কাজ করে।
     async insertCustomer(data) {
         try {
             const result = await pool.query(
@@ -147,6 +210,16 @@ const CustomerRepository = {
                  VALUES ($1, $2, $3, $4, $5) RETURNING *`,
                 [data.name, data.phone, data.father_name, data.customer_address, data.total_due]
             );
+            const newCustomer = result.rows[0];
+
+            if (data.phone && data.phone.trim() !== '') {
+                await pool.query(
+                    `INSERT INTO customer_phones (customer_id, phone, is_primary)
+                     VALUES ($1, $2, true) ON CONFLICT (phone) DO NOTHING`,
+                    [newCustomer.id, data.phone]
+                );
+            }
+
             return { data: result.rows, error: null };
         } catch (error) {
             return { data: null, error };

@@ -13,7 +13,7 @@ const BillingService = {
     // (process_checkout) atomic transaction হিসেবে চলে। কোনো একটা ধাপ ফেল করলে
     // Postgres নিজেই সব বাতিল (rollback) করে দেয় — আংশিক ডাটা সেভ হওয়ার সুযোগ নেই।
     async processCheckoutBusinessLogic(checkoutData) {
-        const { cart, customerName, customerPhone, fatherName, customerAddress, laborCost, laborBearer, transportCost, transportBearer, subtotal, totalPayable, cashPaid, due, previousDue, discount_amount } = checkoutData;
+        const { cart, customerId, customerName, customerPhone, fatherName, customerAddress, laborCost, laborBearer, transportCost, transportBearer, subtotal, totalPayable, cashPaid, due, previousDue, discount_amount } = checkoutData;
 
         if (!cart || cart.length === 0) {
             throw new Error("কার্ট খালি, চেকআউট করা যাবে না।");
@@ -27,6 +27,9 @@ const BillingService = {
                 total_price: parseFloat(item.total_price) || 0,
                 booking_id: item.bookingId || null // 🎯 নতুন — locked-price লাইন হলে booking-এর delivered_quantity আপডেট হবে
             })),
+            // 🎯 নতুন — frontend suggestion থেকে কাস্টমার বেছে নিলে তার id এখানে আসবে।
+            // না থাকলে undefined যাবে, billing.repository.js এর ফলব্যাক (ফোন/নাম দিয়ে খোঁজা) চলবে।
+            p_customer_id: customerId || null,
             p_customer_name: customerName,
             p_customer_phone: customerPhone,
             p_father_name: fatherName,

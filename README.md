@@ -40,7 +40,7 @@ due আপডেট, sale insert, sale_items insert) — একটা ফেল 
     9.
     10.
 # Hisab o Report (হিসাব ও রিপোর্ট)- kaj baki ase
-    1. 
+    1. customer mal firot diye gele oitar labor cost labor bill er sathe add korte hobe 
     2.
     3.
     4.

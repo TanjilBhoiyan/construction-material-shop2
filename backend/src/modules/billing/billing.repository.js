@@ -54,13 +54,34 @@ const BillingRepository = {
             const customerName = params.p_customer_name;
             const customerPhone = params.p_customer_phone;
 
+            // 🎯 নতুন — এই sale টা শেষে কোন customer_id এর সাথে জুড়া হবে, সেটা এই ভ্যারিয়েবলে জমা হবে।
+            // "অনিবন্ধিত কাস্টমার" (walk-in) হলে এইটা null-ই থেকে যাবে — যেমনটা এতদিন হয়ে এসেছে।
+            let resolvedCustomerId = null;
+
             if (customerName && customerName.trim() !== '' && customerName !== 'অনিবন্ধিত কাস্টমার') {
-                let existingCustomerId = null;
+                // 🎯 নতুন — frontend যদি suggestion থেকে বেছে নেওয়া কাস্টমারের id সরাসরি পাঠায় (p_customer_id),
+                // তাহলে নাম/ফোন দিয়ে খোঁজার দরকারই নাই — সরাসরি ঐ id ব্যবহার হবে। এতে ভুল কাস্টমারে
+                // জোড়া লাগার সুযোগ থাকে না, নাম/ফোন যাই বদলে দেওয়া হোক না কেন।
+                let existingCustomerId = params.p_customer_id || null;
                 let existingDue = 0;
 
-                if (customerPhone && customerPhone.trim() !== '') {
+                if (existingCustomerId) {
                     const res = await client.query(
-                        'SELECT id, total_due FROM customers WHERE phone = $1 LIMIT 1',
+                        'SELECT total_due FROM customers WHERE id = $1 LIMIT 1',
+                        [existingCustomerId]
+                    );
+                    if (res.rows.length === 0) {
+                        throw new Error(`CUSTOMER_NOT_FOUND|${existingCustomerId}`);
+                    }
+                    existingDue = parseFloat(res.rows[0].total_due);
+                } else if (customerPhone && customerPhone.trim() !== '') {
+                    // ⚠️ পুরনো fallback path — frontend এখনো p_customer_id না পাঠালে এখানে আসবে।
+                    // 🎯 এখন customers.phone এর বদলে customer_phones টেবিল দিয়ে খোঁজা হচ্ছে, যাতে
+                    // কাস্টমারের secondary নম্বর দিয়ে কল করলেও তাকে ঠিকমতো চেনা যায়।
+                    const res = await client.query(
+                        `SELECT c.id, c.total_due FROM customer_phones cp
+                         JOIN customers c ON c.id = cp.customer_id
+                         WHERE cp.phone = $1 LIMIT 1`,
                         [customerPhone]
                     );
                     if (res.rows.length > 0) {
@@ -94,10 +115,24 @@ const BillingRepository = {
                             existingCustomerId
                         ]
                     );
+
+                    // 🎯 নতুন — checkout এর সময় দেওয়া ফোন নম্বরটা যদি এই কাস্টমারের নামে এখনো সেভ করা
+                    // না থাকে (অন্য নম্বর থেকে কল করেছে), সেটাকে secondary নম্বর হিসেবে যোগ করে দেওয়া হয়।
+                    // নম্বরটা অন্য কারো নামে আগে থেকেই থাকলে UNIQUE ধরে ফেলবে, তাই ON CONFLICT DO NOTHING —
+                    // ভুল করে অন্য কাস্টমারের নম্বর কেড়ে নেওয়া হবে না।
+                    if (customerPhone && customerPhone.trim() !== '') {
+                        await client.query(
+                            `INSERT INTO customer_phones (customer_id, phone, is_primary)
+                             VALUES ($1, $2, false) ON CONFLICT (phone) DO NOTHING`,
+                            [existingCustomerId, customerPhone]
+                        );
+                    }
+
+                    resolvedCustomerId = existingCustomerId;
                 } else {
-                    await client.query(
+                    const insertRes = await client.query(
                         `INSERT INTO customers (name, phone, father_name, customer_address, total_due)
-                         VALUES ($1, $2, $3, $4, $5)`,
+                         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
                         [
                             customerName,
                             customerPhone || null,
@@ -106,19 +141,30 @@ const BillingRepository = {
                             params.p_due
                         ]
                     );
+                    resolvedCustomerId = insertRes.rows[0].id;
+
+                    // 🎯 নতুন — নতুন কাস্টমার তৈরি হওয়ার সাথে সাথে তার প্রথম নম্বরটা customer_phones এ primary হিসেবে সেভ
+                    if (customerPhone && customerPhone.trim() !== '') {
+                        await client.query(
+                            `INSERT INTO customer_phones (customer_id, phone, is_primary)
+                             VALUES ($1, $2, true) ON CONFLICT (phone) DO NOTHING`,
+                            [resolvedCustomerId, customerPhone]
+                        );
+                    }
                 }
             }
 
-            // ৩. sales টেবিলে মেমো সেভ
+            // ৩. sales টেবিলে মেমো সেভ — 🎯 নতুন: customer_id ও এখন থেকে সেভ হয়
             const saleRes = await client.query(
                 `INSERT INTO sales (
-                    customer_name, customer_phone, father_name, customer_address,
+                    customer_id, customer_name, customer_phone, father_name, customer_address,
                     subtotal, labor_cost, labor_bearer, carrying_cost, carrying_bearer,
                     total_payable, cash_paid, due_amount, "previousDue", discount_amount
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
                 RETURNING id`,
                 [
+                    resolvedCustomerId,
                     params.p_customer_name,
                     params.p_customer_phone,
                     params.p_father_name,

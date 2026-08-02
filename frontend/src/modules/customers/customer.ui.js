@@ -59,7 +59,7 @@ async function openCustomerLedger(customer) {
         document.getElementById('ledger-cust-phone').innerText = phone || '—';
         tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4">⏳ খাতা খোলা হচ্ছে, দয়া করে অপেক্ষা করুন...</td></tr>`;
 
-        const { mergedData, summary } = await CustomerAPI.getLedger(customer);
+        const { mergedData, summary } = await CustomerAPI.getLedger(customer.id);
         renderLedgerTable(mergedData, summary, tbody, detailsView, mainListArea);
 
         // 🎯 নতুন — "নতুন আইটেম বুকিং করুন" বাটন, এই কাস্টমারের জন্য (ডুপ্লিকেট-লিসেনার এড়াতে .onclick ব্যবহার)

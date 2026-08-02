@@ -12,6 +12,10 @@ let cart = [];
 let globalProducts = [];
 let currentDiscountAmount = 0;
 let customerOpenBookings = [];
+// 🎯 নতুন — সাজেশন থেকে কাস্টমার সিলেক্ট করলে তার id এখানে "লক" হয়ে থাকে।
+// checkout এর সময় এটা backend-এ পাঠানো হবে, যাতে নাম/ফোন দিয়ে না খুঁজে সরাসরি সঠিক
+// কাস্টমারের সাথে বিল জোড়া লাগে (একাধিক ফোন নম্বর থাকলেও ভুল হওয়ার সুযোগ নাই)।
+let selectedCustomerId = null;
 
 // ---------- পিওর ক্যালকুলেশন লজিক (Electron সার্ভিস থেকে অপরিবর্তিত) ----------
 
@@ -297,7 +301,7 @@ async function handleCheckout(checkoutBillBtn) {
 
     try {
         await BillingAPI.checkout({
-            cart, customerName, customerPhone, fatherName, customerAddress,
+            cart, customerId: selectedCustomerId, customerName, customerPhone, fatherName, customerAddress,
             laborCost, laborBearer, transportCost, transportBearer,
             subtotal,
             totalPayable: actualInvoiceTotal,
@@ -312,6 +316,7 @@ async function handleCheckout(checkoutBillBtn) {
         currentDiscountAmount = 0;
         cart = [];
         customerOpenBookings = [];
+        selectedCustomerId = null; // 🎯 নতুন — পরের বিলের জন্য লক খুলে ফেলা
         renderCart();
 
         if (document.getElementById('bill-cust-name')) document.getElementById('bill-cust-name').value = '';
@@ -397,6 +402,11 @@ function initCustomerSearch() {
             const suggestionsBox = document.getElementById('customer-suggestions');
             if (!suggestionsBox) return;
 
+            // 🎯 নতুন — নাম ফিল্ডে টাইপ করা মানেই আগের "লক করা" কাস্টমার আর ভরসাযোগ্য না
+            // (হয়তো ভুল হয়ে গেছিল, বা অন্য কাস্টমার লেখা হচ্ছে) — তাই লক খুলে দেওয়া হলো।
+            // সাজেশন থেকে ক্লিক করলে আবার নতুন করে লক হবে (নিচে suggestion-item ক্লিকে)।
+            selectedCustomerId = null;
+
             if (query === '') {
                 const phoneInput = document.getElementById('bill-cust-phone');
                 if (phoneInput) phoneInput.value = '';
@@ -434,6 +444,9 @@ function initCustomerSearch() {
 
         if (suggestionItem) {
             const cust = JSON.parse(suggestionItem.dataset.cust);
+
+            // 🎯 নতুন — সাজেশন থেকে বেছে নেওয়া মানেই এই কাস্টমারের id নিশ্চিত হয়ে গেলো, লক করে দেওয়া হলো
+            selectedCustomerId = cust.id;
 
             const nameInput = document.getElementById('bill-cust-name');
             if (nameInput) nameInput.value = cust.name || '';

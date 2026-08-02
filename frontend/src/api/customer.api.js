@@ -8,10 +8,10 @@ export const CustomerAPI = {
         return await res.json();
     },
 
-    async getLedger(customer) {
-        const { id, name, phone } = customer;
-        const url = `${API_BASE}/${id}/ledger?name=${encodeURIComponent(name || '')}&phone=${encodeURIComponent(phone || '')}`;
-        const res = await fetch(url);
+    // 🎯 নতুন — আগে {id, name, phone} পাঠাতে হতো, এখন শুধু customerId দিলেই হয় (backend এখন
+    // sales.customer_id দিয়ে খুঁজে, নাম/ফোন query param এর আর দরকার নাই)
+    async getLedger(customerId) {
+        const res = await fetch(`${API_BASE}/${customerId}/ledger`);
         if (!res.ok) throw new Error('খাতা লোড করতে সমস্যা হয়েছে');
         return await res.json();
     },

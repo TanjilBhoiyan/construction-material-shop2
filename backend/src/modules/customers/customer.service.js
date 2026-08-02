@@ -46,10 +46,10 @@ const CustomerService = {
         return { processedData, summary: { totalBought, totalPaid, totalReturned, runningDue } };
     },
 
-    async generateLedgerData(customer) {
-        const { id, name, phone } = customer;
-
-        const { data: salesData, error: salesErr } = await CustomerRepository.getSalesByCustomer(phone, name);
+    // 🎯 নতুন — আগে {id, name, phone} নিয়ে phone/name দিয়ে sale খুঁজতো, এখন শুধু customerId
+    // দিয়ে সরাসরি sales.customer_id ম্যাচ করে খোঁজে। নাম/ফোন যতই আলাদা থাকুক, id দিয়েই সব বিল পাওয়া যাবে।
+    async generateLedgerData(customerId) {
+        const { data: salesData, error: salesErr } = await CustomerRepository.getSalesByCustomerId(customerId);
         if (salesErr) throw salesErr;
         const sales = salesData || [];
 
@@ -60,12 +60,12 @@ const CustomerService = {
             if (!itemsErr && itemsData) allSaleItems = itemsData;
         }
 
-        const { data: payData, error: payErr } = await CustomerRepository.getCustomerPayments(id);
+        const { data: payData, error: payErr } = await CustomerRepository.getCustomerPayments(customerId);
         if (payErr) throw payErr;
         const payments = payData || [];
 
         // 🎯 নতুন — এই কাস্টমারের রিটার্ন হিস্ট্রি
-        const { data: returnsData, error: returnsErr } = await CustomerRepository.getReturnsByCustomer(id);
+        const { data: returnsData, error: returnsErr } = await CustomerRepository.getReturnsByCustomer(customerId);
         if (returnsErr) throw returnsErr;
         const returns = returnsData || [];
 

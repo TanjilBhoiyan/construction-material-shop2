@@ -30,14 +30,11 @@ const CustomerController = {
         }
     },
 
+    // 🎯 নতুন — আগে req.query.name/phone ও পাঠাতে হতো, এখন শুধু id দিয়েই চলবে
     async getLedger(req, res) {
         try {
-            const customer = {
-                id: parseInt(req.params.id),
-                name: req.query.name || '',
-                phone: req.query.phone || ''
-            };
-            const result = await CustomerService.generateLedgerData(customer);
+            const customerId = parseInt(req.params.id);
+            const result = await CustomerService.generateLedgerData(customerId);
             res.status(200).json(result);
         } catch (error) {
             res.status(500).json({ message: error.message });
