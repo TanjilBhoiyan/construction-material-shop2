@@ -283,7 +283,23 @@ const CustomerService = {
 
         if (error) throw error;
         return data;
+    },
+        async addPhone(customerId, phone, label) {
+        const trimmedPhone = (phone || '').trim();
+        if (!trimmedPhone) {
+            throw new Error("দয়া করে সঠিক ফোন নম্বর দিন।");
+        }
+
+        const { data, error } = await CustomerRepository.addPhoneToCustomer(customerId, trimmedPhone, label || null, false);
+        if (error) {
+            if (error.code === '23505') { 
+                throw new Error("এই নম্বরটা আগে থেকেই অন্য কোনো কাস্টমারের নামে যোগ করা আছে।");
+            }
+            throw error;
+        }
+        return data;
     }
-};
+    
+}
 
 module.exports = { CustomerService };

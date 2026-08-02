@@ -56,8 +56,12 @@ async function openCustomerLedger(customer) {
 
         document.getElementById('ledger-cust-name').innerText = name || 'অজানা কাস্টমার';
         document.getElementById('ledger-cust-father').innerText = father_name || '—';
-        document.getElementById('ledger-cust-phone').innerText = phone || '—';
+        document.getElementById('ledger-cust-phone').innerText = phone || '—'; // 🎯 প্রথমে দ্রুত এইটা দেখাবে, নিচের কলে সব নম্বর দিয়ে replace হয়ে যাবে
         tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4">⏳ খাতা খোলা হচ্ছে, দয়া করে অপেক্ষা করুন...</td></tr>`;
+
+        // 🎯 নতুন — কাস্টমারের সব ফোন নম্বর (নোট সহ) লোড করে উপরের কার্ডে + মোডালে দেখানো,
+        // যাতে কল দেওয়ার আগে কোন নম্বরটা কার (স্ত্রী/ভাই) সেটা এক নজরেই বোঝা যায়
+        loadAndRenderPhones(customer.id);
 
         const { mergedData, summary } = await CustomerAPI.getLedger(customer.id);
         renderLedgerTable(mergedData, summary, tbody, detailsView, mainListArea);
@@ -97,10 +101,120 @@ async function openCustomerLedger(customer) {
                 if (modal) modal.classList.add('hidden');
             };
         }
-
+        setupPhonesModal(customer);
     } catch (err) {
         console.error("Ledger Load Error:", err.message);
         ToastUI.showToast("খাতা লোড করতে সমস্যা হয়েছে ভাই!", true);
+    }
+}
+// ---------------------------------------------------------
+// 📞 MULTI-PHONE ফিচার — সম্পূর্ণ আলাদা ফাংশন, existing কোড ছোঁয়া হয়নি
+// ---------------------------------------------------------
+
+function renderPhoneList(phones) {
+    const container = document.getElementById('phone-list-container');
+    if (!container) return;
+
+    if (!phones || phones.length === 0) {
+        container.innerHTML = `<div class="text-sm text-gray-400 italic text-center py-2">কোনো নম্বর সেভ করা নাই</div>`;
+        return;
+    }
+
+    container.innerHTML = phones.map(p => `
+        <div class="flex justify-between items-center bg-gray-50 border border-gray-200 rounded px-3 py-2">
+            <div>
+                <span class="font-semibold text-gray-800">${p.phone}</span>
+                ${p.is_primary ? '<span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded ml-2">প্রধান</span>' : ''}
+                ${p.label ? `<div class="text-xs text-gray-500 mt-0.5">${p.label}</div>` : ''}
+            </div>
+        </div>
+    `).join('');
+}
+
+// 🎯 নতুন — উপরের ছোট কার্ডের "মোবাইল" লাইনে সব নম্বর নোট সহ ছোট ছোট ব্যাজ আকারে দেখানো,
+// যাতে মোডাল না খুলেও কল দেওয়ার আগে এক নজরে কোনটা কার নম্বর বোঝা যায়
+function renderPhoneHeaderLine(phones) {
+    const el = document.getElementById('ledger-cust-phone');
+    if (!el) return;
+
+    if (!phones || phones.length === 0) {
+        el.innerText = '—';
+        return;
+    }
+
+    el.innerHTML = phones.map(p => {
+        const tag = p.is_primary ? 'প্রধান' : (p.label || 'অতিরিক্ত');
+        return `<span class="inline-block bg-gray-100 border border-gray-300 rounded px-2 py-0.5 mr-1 mb-1 text-xs font-semibold text-gray-800">${p.phone} <span class="font-normal text-gray-500">(${tag})</span></span>`;
+    }).join('');
+}
+
+async function loadAndRenderPhones(customerId) {
+    const container = document.getElementById('phone-list-container');
+    if (container) container.innerHTML = `<div class="text-sm text-gray-400 text-center py-2">⏳ লোড হচ্ছে...</div>`;
+    try {
+        const phones = await CustomerAPI.getPhones(customerId);
+        renderPhoneList(phones);
+        renderPhoneHeaderLine(phones); // 🎯 নতুন — উপরের কার্ডেও একসাথে আপডেট হবে
+    } catch (err) {
+        console.error("Phone list load failed:", err.message);
+        if (container) container.innerHTML = `<div class="text-sm text-red-500 text-center py-2">নম্বর লোড করতে সমস্যা হয়েছে</div>`;
+    }
+}
+
+// 🎯 প্রতিবার ledger খোলার সময় কল হয় — .onclick ব্যবহার করা হচ্ছে (addEventListener না) যাতে
+// বারবার কল হলেও ডুপ্লিকেট লিসেনার জমে না যায় (billing/return/booking মোডালের মতোই প্যাটার্ন)।
+function setupPhonesModal(customer) {
+    const openBtn = document.getElementById('btn-open-phones-modal');
+    const closeBtn = document.getElementById('btn-close-phones-modal');
+    const modal = document.getElementById('phones-modal');
+    const addBtn = document.getElementById('btn-add-phone');
+    const nameLabel = document.getElementById('phones-modal-cust-name-label');
+
+    if (openBtn) {
+        openBtn.onclick = () => {
+            if (nameLabel) nameLabel.innerText = customer.name || '';
+            if (modal) modal.classList.remove('hidden');
+            loadAndRenderPhones(customer.id);
+        };
+    }
+
+    if (closeBtn) {
+        closeBtn.onclick = () => {
+            if (modal) modal.classList.add('hidden');
+            const phoneInput = document.getElementById('new-phone-input');
+            const labelInput = document.getElementById('new-phone-label');
+            if (phoneInput) phoneInput.value = '';
+            if (labelInput) labelInput.value = '';
+        };
+    }
+
+    if (addBtn) {
+        addBtn.onclick = async () => {
+            const phoneInput = document.getElementById('new-phone-input');
+            const labelInput = document.getElementById('new-phone-label');
+            const phone = phoneInput ? phoneInput.value.trim() : '';
+            const label = labelInput ? labelInput.value.trim() : '';
+
+            if (!phone) {
+                ToastUI.showToast("দয়া করে একটা ফোন নম্বর লিখুন।", true);
+                return;
+            }
+
+            addBtn.disabled = true;
+            addBtn.innerText = "⏳ সেভ হচ্ছে...";
+            try {
+                await CustomerAPI.addPhone(customer.id, phone, label);
+                ToastUI.showToast("🎉 নম্বর সফলভাবে যোগ হয়েছে!");
+                if (phoneInput) phoneInput.value = '';
+                if (labelInput) labelInput.value = '';
+                loadAndRenderPhones(customer.id);
+            } catch (err) {
+                ToastUI.showToast(err.message, true);
+            } finally {
+                addBtn.disabled = false;
+                addBtn.innerText = "💾 নম্বর সেভ করুন";
+            }
+        };
     }
 }
 

@@ -9,4 +9,8 @@ router.get('/:id/open-bookings', CustomerController.getOpenBookings);
 router.post('/bookings', CustomerController.createBooking);
 router.post('/:id/return', CustomerController.submitReturn);
 
+// 🎯 নতুন — multi-phone ফিচার: কাস্টমারের সব নম্বর দেখা ও নতুন নম্বর+নোট যোগ করা
+router.get('/:id/phones', CustomerController.getPhones);
+router.post('/:id/phones', CustomerController.addPhone);
+
 module.exports = router;

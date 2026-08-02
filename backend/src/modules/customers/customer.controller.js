@@ -82,6 +82,30 @@ const CustomerController = {
         } catch (error) {
             res.status(400).json({ message: error.message });
         }
+    },
+
+    // 🎯 নতুন — multi-phone ফিচার — GET /api/customers/:id/phones
+    async getPhones(req, res) {
+        try {
+            const customerId = parseInt(req.params.id);
+            const { data, error } = await CustomerRepository.getPhonesByCustomerId(customerId);
+            if (error) throw error;
+            res.status(200).json(data || []);
+        } catch (error) {
+            res.status(500).json({ message: error.message });
+        }
+    },
+
+    // 🎯 নতুন — multi-phone ফিচার — POST /api/customers/:id/phones
+    async addPhone(req, res) {
+        try {
+            const customerId = parseInt(req.params.id);
+            const { phone, label } = req.body;
+            const result = await CustomerService.addPhone(customerId, phone, label);
+            res.status(200).json(result);
+        } catch (error) {
+            res.status(400).json({ message: error.message });
+        }
     }
 };
 

@@ -58,5 +58,23 @@ export const CustomerAPI = {
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || 'মাল ফেরত সেভ করতে সমস্যা হয়েছে');
         return data;
+    },
+
+    // 🎯 নতুন — multi-phone ফিচার
+    async getPhones(customerId) {
+        const res = await fetch(`${API_BASE}/${customerId}/phones`);
+        if (!res.ok) throw new Error('ফোন নম্বর লোড করতে সমস্যা হয়েছে');
+        return await res.json();
+    },
+
+    async addPhone(customerId, phone, label) {
+        const res = await fetch(`${API_BASE}/${customerId}/phones`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone, label })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'নম্বর যোগ করতে সমস্যা হয়েছে');
+        return data;
     }
 };

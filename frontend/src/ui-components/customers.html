@@ -78,6 +78,9 @@
         </button>
         <h4 class="text-xl font-bold text-blue-600 mb-0">📜 কাস্টমার লেজার খতিয়ান</h4>
         <div class="flex items-center gap-2">
+            <button id="btn-open-phones-modal" class="bg-sky-600 hover:bg-sky-700 text-white font-bold py-1.5 px-3 rounded text-sm shadow">
+                📞 ফোন নম্বর
+            </button>
             <button id="btn-open-return-modal" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-1.5 px-3 rounded text-sm shadow">
                 ↩️ মাল ফেরত নিন
             </button>
@@ -340,5 +343,30 @@
             class="w-full bg-rose-600 hover:bg-rose-700 text-white font-black py-3 px-4 rounded text-lg shadow-md transition">
             ↩️ ফেরত নিশ্চিত করুন
         </button>
+    </div>
+</div>
+<!-- 🎯 নতুন — multi-phone ফিচার: কাস্টমারের সব নম্বর দেখা ও নতুন নম্বর+নোট যোগ করার মডাল -->
+<div id="phones-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6 space-y-4">
+        <div class="flex justify-between items-center border-b pb-2">
+            <h3 class="text-lg font-bold text-sky-600">📞 ফোন নম্বর — <span id="phones-modal-cust-name-label"></span></h3>
+            <button id="btn-close-phones-modal" class="bg-gray-400 hover:bg-gray-500 text-white px-3 py-1 rounded text-sm font-medium">✕ বন্ধ করুন</button>
+        </div>
+
+        <div id="phone-list-container" class="space-y-2">
+            <!-- এখানে JS দিয়ে ফোন নম্বরের তালিকা বসবে -->
+        </div>
+
+        <div class="bg-sky-50 p-3 rounded-md border border-sky-200 space-y-2">
+            <label class="block text-xs font-bold text-sky-700 uppercase tracking-wide">➕ নতুন নম্বর যোগ করুন</label>
+            <input type="text" id="new-phone-input" placeholder="যেমন: 017xxxxxxxx"
+                class="mt-1 block w-full rounded-md p-2 bg-white border border-gray-300">
+            <input type="text" id="new-phone-label" placeholder="নোট (ঐচ্ছিক) — যেমন: স্ত্রীর নম্বর"
+                class="mt-1 block w-full rounded-md p-2 bg-white border border-gray-300">
+            <button type="button" id="btn-add-phone"
+                class="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded shadow-sm">
+                💾 নম্বর সেভ করুন
+            </button>
+        </div>
     </div>
 </div>
