@@ -12,7 +12,8 @@ const ReportService = {
         return { start, end };
     },
 
-    calculateSummary(sales, products) {
+    // 🎯 নতুন — এখন তৃতীয় প্যারামিটার হিসেবে returns ও নেয়, "মাল ফেরত" এর লেবার খরচও totalLaborCost এ যোগ হবে
+    calculateSummary(sales, products, returns = []) {
         let totalSales = 0;
         let cashReceived = 0;
         let totalDue = 0;
@@ -31,12 +32,19 @@ const ReportService = {
             totalLaborCost += parseFloat(product.labor_cost || 0);
         });
 
+        // 🎯 নতুন — sale-এর মতোই, bearer যেই হোক না কেন (customer/shop), লেবারকে আজ টাকা দেওয়া হয়েছে —
+        // তাই এই খরচটাও "আজকের মোট লেবার খরচ" এ ধরা হচ্ছে
+        returns.forEach(ret => {
+            totalLaborCost += parseFloat(ret.labor_cost || 0);
+        });
+
         const finalNetProfit = totalProfitFromSales - totalLaborCost;
 
         return { totalSales, cashReceived, totalDue, totalNetProfit: finalNetProfit, totalLaborCost };
     },
 
-    generateLaborLedger(sales, products) {
+    // 🎯 নতুন — এখন তৃতীয় প্যারামিটার হিসেবে returns ও নেয়, লেবার-খতিয়ানের তালিকায় "মাল ফেরত" এন্ট্রিও দেখাবে
+    generateLaborLedger(sales, products, returns = []) {
         let laborItems = [];
         let grandTotalLabor = 0;
 
@@ -67,27 +75,45 @@ const ReportService = {
             }
         });
 
+        // 🎯 নতুন — "মাল ফেরত" এর লেবার খরচ
+        returns.forEach(ret => {
+            const laborCost = parseFloat(ret.labor_cost || 0);
+            if (laborCost > 0) {
+                grandTotalLabor += laborCost;
+                const customerName = ret.customer_name && ret.customer_name !== 'EMPTY' ? ret.customer_name : 'অনিবন্ধিত কাস্টমার';
+                laborItems.push({
+                    date: new Date(ret.created_at).toLocaleDateString('bn-BD'),
+                    description: `মাল ফেরত (${customerName})`,
+                    cost: laborCost,
+                    type: 'return'
+                });
+            }
+        });
+
         return { laborItems, grandTotalLabor };
     },
 
     async getFullReport(targetDate, repository) {
         const { start, end } = this.getDateRange(targetDate);
 
-        const [salesRes, inventoryRes] = await Promise.all([
+        const [salesRes, inventoryRes, returnsRes] = await Promise.all([
             repository.getSalesByDate(start, end),
-            repository.getInventoryLogsByDate(start, end)
+            repository.getInventoryLogsByDate(start, end),
+            repository.getReturnsByDate(start, end)
         ]);
 
         if (salesRes.error) throw salesRes.error;
         if (inventoryRes.error) throw inventoryRes.error;
+        if (returnsRes.error) throw returnsRes.error;
 
         const sales = salesRes.data || [];
         const products = inventoryRes.data || [];
+        const returns = returnsRes.data || [];
 
         return {
             sales,
-            summary: this.calculateSummary(sales, products),
-            laborLedger: this.generateLaborLedger(sales, products)
+            summary: this.calculateSummary(sales, products, returns),
+            laborLedger: this.generateLaborLedger(sales, products, returns)
         };
     }
 };

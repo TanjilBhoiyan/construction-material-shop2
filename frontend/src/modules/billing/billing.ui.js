@@ -273,6 +273,11 @@ async function handleCheckout(checkoutBillBtn) {
     const fatherName = document.getElementById('customer-father')?.value.trim() || "";
     const customerAddress = document.getElementById('customer-address')?.value.trim() || "";
 
+    if (customerPhone && !/^\d{11}$/.test(customerPhone)) {
+        ToastUI.showToast("ফোন নম্বর অবশ্যই ১১ ডিজিটের সংখ্যা হতে হবে।", true);
+        return;
+    }
+
     const {
         summaryLaborCost, summaryLaborBearer, summaryTransportCost, summaryTransportBearer,
         summarySubtotal, summaryTotalPayable, summaryCashPaid, prevDueElement, roundOffCheckbox
@@ -533,6 +538,15 @@ export function initBillingModule() {
     populateBillingDropdown();
     populateAddressDropdown('customer-address');
     initCustomerSearch();
+
+        const billCustPhoneInput = document.getElementById('bill-cust-phone');
+    if (billCustPhoneInput) {
+        billCustPhoneInput.setAttribute('maxlength', '11');
+        billCustPhoneInput.setAttribute('inputmode', 'numeric');
+        billCustPhoneInput.addEventListener('input', () => {
+            billCustPhoneInput.value = billCustPhoneInput.value.replace(/\D/g, '').slice(0, 11);
+        });
+    }
 
     if (billProdSelect) billProdSelect.onchange = (e) => updateRateField(e.target.value);
 

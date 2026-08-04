@@ -51,7 +51,7 @@ due আপডেট, sale insert, sale_items insert) — একটা ফেল 
     9.
     10.
 # Customer Khotiyan (কাস্টমার খতিয়ান)- kaj baki ase
-    1.
+    1.mal ferot er modal e j j mal nisilo se product gulo e dekhabe 
     2.
     3.
     4.
